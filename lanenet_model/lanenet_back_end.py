@@ -22,6 +22,8 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
     LaneNet backend branch which is mainly used for binary and instance segmentation loss calculation
     """
     def __init__(self, phase):
+        print("backend __init__")
+
         """
         init lanenet backend
         :param phase: train or test
@@ -31,6 +33,8 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         self._is_training = self._is_net_for_training()
 
     def _is_net_for_training(self):
+        print("backend is for training")
+
         """
         if the net is used for training or not
         :return:
@@ -44,6 +48,8 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
 
     @classmethod
     def _compute_class_weighted_cross_entropy_loss(cls, onehot_labels, logits, classes_weights):
+        print("backend compute class weighted cross entropy loss")
+
         """
 
         :param onehot_labels:
@@ -64,6 +70,8 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
     def compute_loss(self, binary_seg_logits, binary_label,
                      instance_seg_logits, instance_label,
                      name, reuse):
+        print("backend compute_loss")
+
         """
         compute lanenet loss
         :param binary_seg_logits:
@@ -146,6 +154,8 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         return ret
 
     def inference(self, binary_seg_logits, instance_seg_logits, name, reuse):
+        print("backend inference")
+
         """
 
         :param binary_seg_logits:
@@ -158,7 +168,14 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
 
             with tf.variable_scope(name_or_scope='binary_seg'):
                 binary_seg_score = tf.nn.softmax(logits=binary_seg_logits)
+                """
+                将一个含任意实数的K维向量“压缩”到另一个K维实向量中，使得每一个元素的范围都在之间，并且所有元素的和为1
+                Returns:
+                A `Tensor`. Has the same type and shape as `logits`.
+                """
+
                 binary_seg_prediction = tf.argmax(binary_seg_score, axis=-1)
+                # 返回最大值索引号 axis：选取的坐标值
 
             with tf.variable_scope(name_or_scope='instance_seg'):
 

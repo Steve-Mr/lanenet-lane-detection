@@ -23,6 +23,8 @@ CFG = global_config.cfg
 
 
 def _morphological_process(image, kernel_size=5):
+    print("lanenet postprocess morphological")
+
     """
     morphological process to fill the hole in the binary segmentation result
     :param image:
@@ -36,14 +38,30 @@ def _morphological_process(image, kernel_size=5):
         image = np.array(image, np.uint8)
 
     kernel = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(kernel_size, kernel_size))
+    """
+    cv2.getStructuringElement( ) 返回指定形状和尺寸的结构元素。
+    这个函数的第一个参数表示内核的形状，有三种形状可以选择。
+    
+    矩形：MORPH_RECT;
+    交叉形：MORPH_CROSS;
+    椭圆形：MORPH_ELLIPSE;
 
-    # close operation fille hole
+    第二和第三个参数分别是内核的尺寸以及锚点的位置。一般在调用erode以及dilate函数之前，先定义一个Mat类型的变量来获得
+    getStructuringElement函数的返回值: 对于锚点的位置，有默认值Point（-1,-1），表示锚点位于中心点。element形状唯一依赖锚点位置，其他情况下，锚点只是影响了形态学运算结果的偏移。
+    """
+
+    # close operation fill hole
     closing = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel, iterations=1)
+    """
+    cv2.MORPH_CLOSE: 闭运算：先膨胀后腐蚀（先膨胀会使白色的部分扩张，以至于消除“闭合”物体里面的小黑洞）
+    """
 
     return closing
 
 
 def _connect_components_analysis(image):
+    print("lanenet postprocess connect components analysis")
+
     """
     connect components analysis to remove the small components
     :param image:
@@ -51,6 +69,7 @@ def _connect_components_analysis(image):
     """
     if len(image.shape) == 3:
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # 颜色空间转换 BGR 转灰度图片
     else:
         gray_image = image
 
@@ -62,6 +81,8 @@ class _LaneFeat(object):
 
     """
     def __init__(self, feat, coord, class_id=-1):
+        print("lanenet postprocess lanefeat __init__")
+
         """
         lane feat object
         :param feat: lane embeddng feats [feature_1, feature_2, ...]
@@ -74,6 +95,8 @@ class _LaneFeat(object):
 
     @property
     def feat(self):
+        print("lanenet postprocess lanefeat feat1")
+
         """
 
         :return:
@@ -82,6 +105,8 @@ class _LaneFeat(object):
 
     @feat.setter
     def feat(self, value):
+        print("lanenet postprocess lanefeat feat2")
+
         """
 
         :param value:
@@ -97,6 +122,8 @@ class _LaneFeat(object):
 
     @property
     def coord(self):
+        print("lanenet postprocess lanefeat coord1")
+
         """
 
         :return:
@@ -105,6 +132,8 @@ class _LaneFeat(object):
 
     @coord.setter
     def coord(self, value):
+        print("lanenet postprocess lanefeat coord2")
+
         """
 
         :param value:
@@ -120,6 +149,8 @@ class _LaneFeat(object):
 
     @property
     def class_id(self):
+        print("lanenet postprocess lanefeat classid1")
+
         """
 
         :return:
@@ -128,6 +159,8 @@ class _LaneFeat(object):
 
     @class_id.setter
     def class_id(self, value):
+        print("lanenet postprocess lanefeat classid2")
+
         """
 
         :param value:
@@ -142,9 +175,12 @@ class _LaneFeat(object):
 class _LaneNetCluster(object):
     """
      Instance segmentation result cluster
+     实例分割聚类器
     """
 
     def __init__(self):
+        print("lanenet postprocess cluster init")
+
         """
 
         """
@@ -159,6 +195,8 @@ class _LaneNetCluster(object):
 
     @staticmethod
     def _embedding_feats_dbscan_cluster(embedding_image_feats):
+        print("lanenet postprocess cluster dbscan")
+
         """
         dbscan cluster
         :param embedding_image_feats:
@@ -196,7 +234,10 @@ class _LaneNetCluster(object):
 
     @staticmethod
     def _get_lane_embedding_feats(binary_seg_ret, instance_seg_ret):
+        print("lanenet postprocess cluster get lane embedding feats")
+
         """
+        通过二值分割掩码图在实例分割图上获取所有车道线的特征向量
         get lane embedding features according the binary seg result
         :param binary_seg_ret:
         :param instance_seg_ret:
@@ -218,6 +259,8 @@ class _LaneNetCluster(object):
         return ret
 
     def apply_lane_feats_cluster(self, binary_seg_result, instance_seg_result):
+        print("lanenet postprocess cluster apply lane feats")
+
         """
 
         :param binary_seg_result:
@@ -261,6 +304,8 @@ class LaneNetPostProcessor(object):
     lanenet post process for lane generation
     """
     def __init__(self, ipm_remap_file_path='./data/tusimple_ipm_remap.yml'):
+        print("lanenet postprocess processor init")
+
         """
 
         :param ipm_remap_file_path: ipm generate file path
@@ -284,6 +329,8 @@ class LaneNetPostProcessor(object):
                            np.array([100, 50, 100])]
 
     def _load_remap_matrix(self):
+        print("lanenet postprocess processor load remap matrix")
+
         """
 
         :return:
@@ -305,11 +352,13 @@ class LaneNetPostProcessor(object):
     def postprocess(self, binary_seg_result, instance_seg_result=None,
                     min_area_threshold=100, source_image=None,
                     data_source='tusimple'):
+        print("lanenet postprocess processor postprocess")
+
         """
 
         :param binary_seg_result:
         :param instance_seg_result:
-        :param min_area_threshold:
+        :param min_area_threshold: 连通域分析阈值
         :param source_image:
         :param data_source:
         :return:
@@ -317,13 +366,17 @@ class LaneNetPostProcessor(object):
         # convert binary_seg_result
         binary_seg_result = np.array(binary_seg_result * 255, dtype=np.uint8)
 
+        # 首先进行图像形态学运算
         # apply image morphology operation to fill in the hold and reduce the small area
         morphological_ret = _morphological_process(binary_seg_result, kernel_size=5)
 
+        # 进行连通域分析
         connect_components_analysis_ret = _connect_components_analysis(image=morphological_ret)
 
+        # 排序连通域并删除过小的连通域
         labels = connect_components_analysis_ret[1]
         stats = connect_components_analysis_ret[2]
+
         for index, stat in enumerate(stats):
             if stat[4] <= min_area_threshold:
                 idx = np.where(labels == index)
@@ -342,7 +395,10 @@ class LaneNetPostProcessor(object):
                 'source_image': None,
             }
 
-        # lane line fit
+        """
+        lane line fit
+        """
+
         fit_params = []
         src_lane_pts = []  # lane pts every single lane
         for lane_index, coords in enumerate(lane_coords):

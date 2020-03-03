@@ -17,6 +17,8 @@ class LaneNetFrondEnd(cnn_basenet.CNNBaseModel):
     LaneNet frontend which is used to extract image features for following process
     """
     def __init__(self, phase, net_flag):
+        print("front end init")
+
         """
 
         """
@@ -25,10 +27,13 @@ class LaneNetFrondEnd(cnn_basenet.CNNBaseModel):
         self._frontend_net_map = {
             'vgg': vgg16_based_fcn.VGG16FCN(phase=phase)
         }
+        # 事实上是字典类型
 
         self._net = self._frontend_net_map[net_flag]
 
     def build_model(self, input_tensor, name, reuse):
+        print("frontend build model")
+
         """
 
         :param input_tensor:

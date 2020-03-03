@@ -23,8 +23,12 @@ class LaneNet(cnn_basenet.CNNBaseModel):
 
     """
     def __init__(self, phase, net_flag='vgg', reuse=False):
-        """
+        print("lanenet __init__")
 
+        """
+        Python 中的 self 等价于 C++ 中的 self 指针和 Java、C# 中的 this 参数。
+        :param: reuse:  设置 reuse=False 时，函数 get_variable() 表示创建变量
+                        设置 reuse=True  时，函数 get_variable() 表示获取变量
         """
         super(LaneNet, self).__init__()
         self._net_flag = net_flag
@@ -33,13 +37,15 @@ class LaneNet(cnn_basenet.CNNBaseModel):
         self._frontend = lanenet_front_end.LaneNetFrondEnd(
             phase=phase, net_flag=net_flag
         )
+
         self._backend = lanenet_back_end.LaneNetBackEnd(
             phase=phase
         )
 
     def inference(self, input_tensor, name):
-        """
+        print("lanenet inference")
 
+        """
         :param input_tensor:
         :param name:
         :return:
@@ -66,6 +72,8 @@ class LaneNet(cnn_basenet.CNNBaseModel):
         return binary_seg_prediction, instance_seg_prediction
 
     def compute_loss(self, input_tensor, binary_label, instance_label, name):
+        print("lanenet compute_loss")
+
         """
         calculate lanenet loss for training
         :param input_tensor:

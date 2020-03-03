@@ -23,6 +23,8 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
     VGG 16 based fcn net for semantic segmentation
     """
     def __init__(self, phase):
+        print("vgg16 init")
+
         """
 
         """
@@ -30,21 +32,49 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
         self._phase = phase
         self._is_training = self._is_net_for_training()
         self._net_intermediate_results = collections.OrderedDict()
+        print("now in vgg16")
 
     def _is_net_for_training(self):
+        print("vgg16 is for training")
+
         """
         if the net is used for training or not
         :return:
         """
         if isinstance(self._phase, tf.Tensor):
+            """
+            isinstance(object, classinfo)
+            object -- 实例对象。
+            classinfo -- 可以是直接或间接类名、基本类型或者由它们组成的元组。
+            
+            isinstance() 会认为子类是一种父类类型，考虑继承关系。
+            """
             phase = self._phase
         else:
             phase = tf.constant(self._phase, dtype=tf.string)
+            """Creates a constant tensor.
+
+              The resulting tensor is populated with values of type `dtype`, as
+              specified by arguments `value` and (optionally) `shape` (see examples
+              below).
+
+              Args:
+                value:          A constant value (or list) of output type `dtype`.
+                dtype:          The type of the elements of the resulting tensor.
+                shape:          Optional dimensions of resulting tensor.
+                name:           Optional name for the tensor.
+                verify_shape:   Boolean that enables verification of a shape of values.
+
+              Returns:
+                A Constant Tensor.
+              """
 
         return tf.equal(phase, tf.constant('train', dtype=tf.string))
 
     def _vgg16_conv_stage(self, input_tensor, k_size, out_dims, name,
                           stride=1, pad='SAME', need_layer_norm=True):
+        print("vgg16 conv stage")
+
         """
         stack conv and activation in vgg16
         :param input_tensor:
@@ -56,6 +86,7 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
         :param need_layer_norm:
         :return:
         """
+
         with tf.variable_scope(name):
             conv = self.conv2d(
                 inputdata=input_tensor, out_channel=out_dims,
@@ -76,6 +107,8 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                       out_channels_nums, name, kernel_size=4,
                       stride=2, use_bias=False,
                       previous_kernel_size=4, need_activate=True):
+        print("vgg16 decode block")
+
         """
 
         :param input_tensor:
@@ -123,8 +156,10 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
         return fuse_feats
 
     def _vgg16_fcn_encode(self, input_tensor, name):
-        """
+        print("vgg16 fcn encode")
 
+        """
+        根据vgg16框架对输入的tensor进行编码
         :param input_tensor:
         :param name:
         :return:
@@ -265,6 +300,8 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
         return
 
     def _vgg16_fcn_decode(self, name):
+        print("vgg16 fcn decode")
+
         """
 
         :return:
@@ -345,8 +382,9 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                 }
 
     def build_model(self, input_tensor, name, reuse=False):
-        """
+        print("vgg16 build model")
 
+        """
         :param input_tensor:
         :param name:
         :param reuse:

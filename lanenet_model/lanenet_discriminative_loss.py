@@ -21,6 +21,8 @@ def discriminative_loss_single(
         param_var,
         param_dist,
         param_reg):
+    print("lanenet discriminative loss single")
+
     """
     discriminative loss
     :param prediction: inference of network
@@ -97,6 +99,8 @@ def discriminative_loss_single(
 
 def discriminative_loss(prediction, correct_label, feature_dim, image_shape,
                         delta_v, delta_d, param_var, param_dist, param_reg):
+    print("lanenet discriminateive loss")
+
     """
 
     :return: discriminative loss and its three components

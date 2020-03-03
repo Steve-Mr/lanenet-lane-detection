@@ -32,28 +32,47 @@ class CNNBaseModel(object):
         :param out_channel: number of output channel.
         :param kernel_size: int so only support square kernel convolution
         :param padding: 'VALID' or 'SAME'
+                        VALID：  不进行填充（输出大小较小）
+                        SAME：   进行填充（输入大小不变）
         :param stride: int so only support square stride
-        :param w_init: initializer for convolution weights
-        :param b_init: initializer for bias
+        :param w_init: initializer for convolution weights 
+        :param b_init: initializer for bias 偏置项b
         :param split: split channels as used in Alexnet mainly group for GPU memory save.
+                        Group convolution 分组卷积 减少参数辆
         :param use_bias:  whether to use bias.
         :param data_format: default set to NHWC according tensorflow
+                        内存布局 有 NCHW 选项
         :return: tf.Tensor named ``output``
         """
         with tf.variable_scope(name):
-            in_shape = inputdata.get_shape().as_list()
+            in_shape = inputdata.get_shape().as_list()  # [1,256,512,3]
+            """
+            get_shape() 返回元组，需要 as_list() 转为 list
+            """
             channel_axis = 3 if data_format == 'NHWC' else 1
+            """
+            [expression1 if condition1 else expression2 for item in list]
+
+            for item in list:
+                if condition1:
+                    expression1
+                else:
+                    expression2
+            """
             in_channel = in_shape[channel_axis]
-            assert in_channel is not None, "[Conv2D] Input cannot have unknown channel!"
+            assert in_channel is not None, "[Conv2D] Input cannot have unknown channel!"    # 断言：in_channel 为空才执行
             assert in_channel % split == 0
             assert out_channel % split == 0
 
-            padding = padding.upper()
+            padding = padding.upper()   # 大写
 
             if isinstance(kernel_size, list):
                 filter_shape = [kernel_size[0], kernel_size[1]] + [in_channel / split, out_channel]
             else:
                 filter_shape = [kernel_size, kernel_size] + [in_channel / split, out_channel]
+                """
+                filter的shape: [filter_height, filter_width, in_channels, out_channels]
+                """
 
             if isinstance(stride, list):
                 strides = [1, stride[0], stride[1], 1] if data_format == 'NHWC' \
@@ -61,6 +80,11 @@ class CNNBaseModel(object):
             else:
                 strides = [1, stride, stride, 1] if data_format == 'NHWC' \
                     else [1, 1, stride, stride]
+                """
+                NHWC 下：
+                strides[0] = 1，也即在 batch 维度上的移动为 1，也就是不跳过任何一个样本，否则当初也不该把它们作为输入（input）
+                strides[3] = 1，也即在 channels 维度上的移动为 1，也就是不跳过任何一个颜色通道；
+                """
 
             if w_init is None:
                 w_init = tf.contrib.layers.variance_scaling_initializer()
@@ -314,6 +338,7 @@ class CNNBaseModel(object):
         """
 
         return tf.layers.batch_normalization(inputs=inputdata, training=is_training, name=name)
+        # Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift
 
     @staticmethod
     def layergn(inputdata, name, group_size=32, esp=1e-5):
