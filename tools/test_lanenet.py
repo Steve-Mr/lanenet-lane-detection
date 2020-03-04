@@ -152,7 +152,6 @@ def test_lanenet(image_path, weights_path):
         print("mask_image = postprocess_result['mask_image']")
         mask_image = postprocess_result['mask_image']
 
-        print("for i in range(CFG.TRAIN.EMBEDDING_FEATS_DIMS):")
         for i in range(CFG.TRAIN.EMBEDDING_FEATS_DIMS):
             instance_seg_image[0][:, :, i] = minmax_scale(instance_seg_image[0][:, :, i])
         embedding_image = np.array(instance_seg_image[0], np.uint8)

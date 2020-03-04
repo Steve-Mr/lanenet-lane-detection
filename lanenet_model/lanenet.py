@@ -44,7 +44,6 @@ class LaneNet(cnn_basenet.CNNBaseModel):
 
     def inference(self, input_tensor, name):
         print("lanenet inference")
-
         """
         :param input_tensor:
         :param name:
