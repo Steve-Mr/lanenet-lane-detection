@@ -125,13 +125,42 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
         :return:
         """
         with tf.variable_scope(name_or_scope=name):
-            deconv_weights_stddev = tf.sqrt(
+            deconv_weights_stddev = tf.sqrt(    # deconv 权重标准差
                 tf.divide(tf.constant(2.0, tf.float32),
                           tf.multiply(tf.cast(previous_kernel_size * previous_kernel_size, tf.float32),
                                       tf.cast(tf.shape(input_tensor)[3], tf.float32)))
             )
+            """
+            tf.sqrt(x, name=None)
+                计算x元素的平方根. 即,(y = sqrt{x} = x^{1/2}).
+
+                函数参数：
+                    x：一个 Tensor 或 SparseTensor,必须是下列类型之一：half,float32,float64,complex64,complex128.
+                    name：操作的名称(可选).
+                函数返回值：
+                    tf.sqrt函数返回 Tensor 或者 SparseTensor,与 x 具有相同的类型相同.
+            ---------
+            tf.multiply(x, y, name=None)
+                参数:
+                    x: 一个类型为:half, float32, float64, uint8, int8, uint16, int16, int32, int64, complex64, complex128的张量。
+                    y: 一个类型跟张量x相同的张量。
+                返回值： x * y element-wise.
+                注意：
+                    （1）multiply这个函数实现的是元素级别的相乘，也就是两个相乘的数元素各自相乘，而不是矩阵乘法，注意和tf.matmul区别。
+                    （2）两个相乘的数必须有相同的数据类型，不然就会报错。
+            ---------
+            tf.cast(x, dtype, name=None)
+                第一个参数 x:   待转换的数据（张量）
+                第二个参数 dtype： 目标数据类型
+                第三个参数 name： 可选参数，定义操作的名称
+            """
+
             deconv_weights_init = tf.truncated_normal_initializer(
                 mean=0.0, stddev=deconv_weights_stddev)
+            """
+            从截断的正态分布中输出随机值.
+            生成的值遵循具有指定平均值和标准偏差的正态分布,不同之处在于其平均值大于 2 个标准差的值将被丢弃并重新选择.
+            """
 
             deconv = self.deconv2d(
                 inputdata=input_tensor, out_channel=out_channels_nums, kernel_size=kernel_size,
@@ -172,10 +201,6 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                 out_dims=64, name='conv1_1',
                 need_layer_norm=True
             )
-            #conv_convert = tf.transpose(conv_1_1, [3, 0, 1, 2])
-            #plt.title("conv1")
-            #plt.imshow(conv_convert[0][0])
-            #plt.show()
             print("conv1_1",conv_1_1.get_shape().as_list())
             conv_1_2 = self._vgg16_conv_stage(
                 input_tensor=conv_1_1, k_size=3,
