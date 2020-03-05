@@ -88,6 +88,12 @@ class CNNBaseModel(object):
 
             if w_init is None:
                 w_init = tf.contrib.layers.variance_scaling_initializer()
+                """
+                Returns an initializer that generates tensors without scaling variance.
+                When initializing a deep network, it is in principle advantageous to keep the scale of the input variance constant,
+                so it does not explode or diminish by reaching the final layer. 
+                保持方差不变
+                """
             if b_init is None:
                 b_init = tf.constant_initializer()
 
@@ -100,14 +106,49 @@ class CNNBaseModel(object):
             if split == 1:
                 conv = tf.nn.conv2d(inputdata, w, strides, padding, data_format=data_format)
             else:
+                # 分组卷积
                 inputs = tf.split(inputdata, split, channel_axis)
                 kernels = tf.split(w, split, 3)
                 outputs = [tf.nn.conv2d(i, k, strides, padding, data_format=data_format)
                            for i, k in zip(inputs, kernels)]
                 conv = tf.concat(outputs, channel_axis)
+                """
+                tf.concat是连接两个矩阵的操作 if use_bias else conv
+                tf.concat(values,concat_dim,name='concat')
+                    values是一个列表。列表里面是要连接的矩阵或者数组。
+                    concat_dim表示在哪个维度上进行连接
+                """
 
             ret = tf.identity(tf.nn.bias_add(conv, b, data_format=data_format)
                               if use_bias else conv, name=name)
+            """
+            tf.identity(input,name=None)
+                Return a tensor with the same shape and contents as input.
+                返回一个具有相同形状张量和内容作为输入；
+
+                Args:
+                    input: A Tensor.
+                    name: A name for the operation (optional).
+                Returns:
+                    A Tensor. Has the same type as input.
+                
+            tf.nn.bias_add(
+                value,
+                bias,
+                data_format=None,
+                name=None
+            )
+                将bias添加到value.
+                这(主要)是tf.add的一种特殊情况,其中bias被限制为1-d.支持广播,因此value可以有任意数量的维度.与tf.add不同的是,在两种类型都是量化的情况下,bias类型允许与value不同.
+
+                参数：
+                    value：一个Tensor,类型为float,double,int64,int32,uint8,int16,int8,complex64,或complex128.
+                    bias：一个 1-D Tensor,其大小与value的最后一个维度匹配；必须和value是相同的类型,除非value是量化类型,在这种情况下可以使用不同的量化类型.
+                    data_format：一个字符串,支持'NHWC'和'NCHW'.
+                    name：操作的名称(可选).
+                返回：
+                    与value具有相同类型的Tensor.
+            """
 
         return ret
 
@@ -117,7 +158,7 @@ class CNNBaseModel(object):
 
         :param name:
         :param inputdata:
-        :return:
+        :return: tensor
         """
         return tf.nn.relu(features=inputdata, name=name)
 
