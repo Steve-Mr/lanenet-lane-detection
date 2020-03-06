@@ -130,6 +130,7 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                           tf.multiply(tf.cast(previous_kernel_size * previous_kernel_size, tf.float32),
                                       tf.cast(tf.shape(input_tensor)[3], tf.float32)))
             )
+            print("deconv_stedev: ",deconv_weights_stddev)
             """
             tf.sqrt(x, name=None)
                 计算x元素的平方根. 即,(y = sqrt{x} = x^{1/2}).
@@ -157,9 +158,18 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
 
             deconv_weights_init = tf.truncated_normal_initializer(
                 mean=0.0, stddev=deconv_weights_stddev)
+            print("deconv_weights_init: ", deconv_weights_init)
             """
             从截断的正态分布中输出随机值.
             生成的值遵循具有指定平均值和标准偏差的正态分布,不同之处在于其平均值大于 2 个标准差的值将被丢弃并重新选择.
+                shape：一维整数张量或 Python 数组,输出张量的形状.
+                mean：dtype 类型的 0-D 张量或 Python 值,截断正态分布的均值.
+                stddev：dtype 类型的 0-D 张量或 Python 值,截断前正态分布的标准偏差.
+                dtype：输出的类型.
+                seed：一个 Python 整数.用于为分发创建随机种子.查看tf.set_random_seed行为.
+                name：操作的名称(可选).
+            函数返回值：
+                tf.truncated_normal函数返回指定形状的张量填充随机截断的正常值.
             """
 
             deconv = self.deconv2d(
@@ -454,6 +464,7 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
             # vgg16 fcn encode part
             self._vgg16_fcn_encode(input_tensor=input_tensor, name='vgg16_encode_module')
             # vgg16 fcn decode part
+            # 使用转置卷积做上采样
             self._vgg16_fcn_decode(name='vgg16_decode_module')
 
         return self._net_intermediate_results
