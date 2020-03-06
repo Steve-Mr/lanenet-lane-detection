@@ -8,9 +8,13 @@
 """
 Implement VGG16 based fcn net for semantic segmentation
 """
+import argparse
 import collections
+import cv2
+import numpy as np
 
 import tensorflow as tf
+from numpy.ma import array
 
 from config import global_config
 from semantic_segmentation_zoo import cnn_basenet
@@ -469,13 +473,72 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
 
         return self._net_intermediate_results
 
+def init_args():
+    """
+
+    :return:
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--image_path', type=str, help='The image path or the src image save dir')
+
+    return parser.parse_args()
+
 
 if __name__ == '__main__':
     """
     test code
+    """
     """
     test_in_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input')
     model = VGG16FCN(phase='train')
     ret = model.build_model(test_in_tensor, name='vgg16fcn')
     for layer_name, layer_info in ret.items():
         print('layer name: {:s} shape: {}'.format(layer_name, layer_info['shape']))
+    """
+    args = init_args()
+    image = cv2.imread(args.image_path, cv2.IMREAD_COLOR)
+
+    image_vis = image
+
+    image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
+
+    image = image / 127.5 - 1.0  # 归一化 (只归一未改变维数)
+
+    print("shape", image.shape)
+    input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
+    model = VGG16FCN(phase='test')
+    model._vgg16_fcn_encode(input_tensor=input_tensor, name='vgg16_encode_module')
+    # vgg16 fcn decode part
+    # 使用转置卷积做上采样
+    model._vgg16_fcn_decode(name='vgg16_decode_module')
+    decode_binary = model._net_intermediate_results['binary_segment_logits']['data']
+    decode_instance = model._net_intermediate_results['instance_segment_logits']['data']
+    enbinary = model._net_intermediate_results['encode_stage_5_binary']['data']
+    eninstance = model._net_intermediate_results['encode_stage_5_instance']['data']
+
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+
+        image = array(image).reshape(1, 256, 512, 3)
+        encode_binary =sess.run(enbinary, feed_dict={input_tensor: image})
+        encode_instance =sess.run(eninstance, feed_dict={input_tensor: image})
+
+        decode_binary1 = sess.run(decode_binary, feed_dict={input_tensor: image})
+        decode_instance1 =sess.run(decode_instance, feed_dict={input_tensor: image})
+        binary = sess.run(tf.transpose(decode_binary1,[3,0,1,2]))
+        instance = sess.run(tf.transpose(decode_instance1,[3,0,1,2]))
+        encodebinary = sess.run(tf.transpose(encode_binary,[3,0,1,2]))
+        encodeinstance = sess.run(tf.transpose(encode_instance,[3,0,1,2]))
+
+        plt.figure('encode_binary')
+        plt.imshow(encodebinary[0][0])
+        plt.figure('encode_instance')
+        plt.imshow(encodeinstance[0][0])
+        plt.figure('decode_binary')
+        plt.imshow(binary[0][0])
+        plt.figure('decode_instance')
+        plt.imshow(instance[0][0])
+
+        plt.show()
+
+        sess.close()
