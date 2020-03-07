@@ -203,9 +203,38 @@ class _LaneNetCluster(object):
         :return:
         """
         db = DBSCAN(eps=CFG.POSTPROCESS.DBSCAN_EPS, min_samples=CFG.POSTPROCESS.DBSCAN_MIN_SAMPLES)
+        """
+        eps: 扫描半径 (0.35)
+        min_samples：作为核心点其邻域中的最小样本数（包括点本身）(1000)
+        """
         try:
             features = StandardScaler().fit_transform(embedding_image_feats)
+            print("embedding_image_feats")
+            print(embedding_image_feats)
+            print("features")
+            print(features)
+            # fit_transform 不仅计算训练数据的均值和方差，
+            # 还会基于计算出来的均值和方差来转换训练数据，从而把数据转换成标准的正太分布
             db.fit(features)
+            """
+            fit(self, X, y=None, sample_weight=None):
+            Perform DBSCAN clustering from features or distance matrix.
+
+            Parameters
+            ----------
+            X : array or sparse (CSR) matrix of shape (n_samples, n_features), or \
+                    array of shape (n_samples, n_samples)
+                A feature array, or array of distances between samples if
+                ``metric='precomputed'``.
+            sample_weight : array, shape (n_samples,), optional
+                Weight of each sample, such that a sample with a weight of at least
+                ``min_samples`` is by itself a core sample; a sample with negative
+                weight may inhibit its eps-neighbor from being core.
+                Note that weights are absolute, and default to 1.
+
+            y : Ignored
+
+            """
         except Exception as err:
             log.error(err)
             ret = {
@@ -243,11 +272,24 @@ class _LaneNetCluster(object):
         :param instance_seg_ret:
         :return:
         """
+
         idx = np.where(binary_seg_ret == 255)
+        # 只有一个参数，输出满足条件的元素**坐标**
         lane_embedding_feats = instance_seg_ret[idx]
-        # idx_scale = np.vstack((idx[0] / 256.0, idx[1] / 512.0)).transpose()
-        # lane_embedding_feats = np.hstack((lane_embedding_feats, idx_scale))
         lane_coordinate = np.vstack((idx[1], idx[0])).transpose()
+        """
+        vstack() 沿着竖直方向将矩阵堆叠起来。
+        使用 transpose() ：
+            将 vstack 结果 [[237 234 235 ... 502 503 504]
+                            [ 87  88  88 ... 255 255 255]]
+            转换为         [[237  87]
+                             [234  88]
+                             [235  88]
+                             ...
+                             [502 255]
+                             [503 255]
+                             [504 255]] 形式。
+        """
 
         assert lane_embedding_feats.shape[0] == lane_coordinate.shape[0]
 
@@ -268,6 +310,11 @@ class _LaneNetCluster(object):
         :return:
         """
         # get embedding feats and coords
+        """
+        {   'lane_embedding_feats': lane_embedding_feats,
+            'lane_coordinates': lane_coordinate
+        }
+        """
         get_lane_embedding_feats_result = self._get_lane_embedding_feats(
             binary_seg_ret=binary_seg_result,
             instance_seg_ret=instance_seg_result
@@ -314,6 +361,7 @@ class LaneNetPostProcessor(object):
 
         self._cluster = _LaneNetCluster()
         self._ipm_remap_file_path = ipm_remap_file_path
+        # 替代 H-NET 作用
 
         remap_file_load_ret = self._load_remap_matrix()
         self._remap_to_ipm_x = remap_file_load_ret['remap_to_ipm_x']
@@ -364,20 +412,42 @@ class LaneNetPostProcessor(object):
         :return:
         """
         # convert binary_seg_result
+        #
         binary_seg_result = np.array(binary_seg_result * 255, dtype=np.uint8)
 
-        # 首先进行图像形态学运算
+        # 首先进行图像形态学运算 闭运算 先膨胀后腐蚀
         # apply image morphology operation to fill in the hold and reduce the small area
         morphological_ret = _morphological_process(binary_seg_result, kernel_size=5)
 
         # 进行连通域分析
         connect_components_analysis_ret = _connect_components_analysis(image=morphological_ret)
 
+        print(connect_components_analysis_ret)
+
         # 排序连通域并删除过小的连通域
         labels = connect_components_analysis_ret[1]
         stats = connect_components_analysis_ret[2]
+        """
+        Get the results
+        The first cell is the number of labels 
+        The second cell is the label matrix
+            (Labels is a matrix the size of the input image where each element has a value equal to its label).
+        The third cell is the stat matrix 
+            (Stats is a matrix of the stats that the function calculates. It has a length equal to the number of labels 
+             and a width equal to the number of stats.)
+            Statistics output for each label, including the background label, see below for available statistics. 
+            Statistics are accessed via stats[label, COLUMN] where available columns are defined below.
+                cv2.CC_STAT_LEFT The leftmost (x) coordinate which is the inclusive start of the bounding box in the horizontal direction.
+                cv2.CC_STAT_TOP The topmost (y) coordinate which is the inclusive start of the bounding box in the vertical direction.
+                cv2.CC_STAT_WIDTH The horizontal size of the bounding box
+                cv2.CC_STAT_HEIGHT The vertical size of the bounding box
+                cv2.CC_STAT_AREA The total area (in pixels) of the connected component
+        """
+        print("stats")
+        print(stats)
 
         for index, stat in enumerate(stats):
+            print("stat4", stat[4])
             if stat[4] <= min_area_threshold:
                 idx = np.where(labels == index)
                 morphological_ret[idx] = 0

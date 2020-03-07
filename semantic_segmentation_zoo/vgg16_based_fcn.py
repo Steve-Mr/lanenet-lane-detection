@@ -134,7 +134,6 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                           tf.multiply(tf.cast(previous_kernel_size * previous_kernel_size, tf.float32),
                                       tf.cast(tf.shape(input_tensor)[3], tf.float32)))
             )
-            print("deconv_stedev: ",deconv_weights_stddev)
             """
             tf.sqrt(x, name=None)
                 计算x元素的平方根. 即,(y = sqrt{x} = x^{1/2}).
@@ -162,7 +161,6 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
 
             deconv_weights_init = tf.truncated_normal_initializer(
                 mean=0.0, stddev=deconv_weights_stddev)
-            print("deconv_weights_init: ", deconv_weights_init)
             """
             从截断的正态分布中输出随机值.
             生成的值遵循具有指定平均值和标准偏差的正态分布,不同之处在于其平均值大于 2 个标准差的值将被丢弃并重新选择.
@@ -215,13 +213,11 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                 out_dims=64, name='conv1_1',
                 need_layer_norm=True
             )
-            print("conv1_1",conv_1_1.get_shape().as_list())
             conv_1_2 = self._vgg16_conv_stage(
                 input_tensor=conv_1_1, k_size=3,
                 out_dims=64, name='conv1_2',
                 need_layer_norm=True
             )
-            print("conv1_2",conv_1_2.get_shape().as_list())
 
             self._net_intermediate_results['encode_stage_1_share'] = {
                 'data': conv_1_2,
@@ -233,21 +229,18 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                 inputdata=conv_1_2, kernel_size=2,
                 stride=2, name='pool1'
             )
-            print("pool1",pool1.get_shape().as_list())
 
             conv_2_1 = self._vgg16_conv_stage(
                 input_tensor=pool1, k_size=3,
                 out_dims=128, name='conv2_1',
                 need_layer_norm=True
             )
-            print("conv2_1",conv_2_1.get_shape().as_list())
 
             conv_2_2 = self._vgg16_conv_stage(
                 input_tensor=conv_2_1, k_size=3,
                 out_dims=128, name='conv2_2',
                 need_layer_norm=True
             )
-            print("conv2_2",conv_2_2.get_shape().as_list())
 
             self._net_intermediate_results['encode_stage_2_share'] = {
                 'data': conv_2_2,
@@ -259,28 +252,24 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                 inputdata=conv_2_2, kernel_size=2,
                 stride=2, name='pool2'
             )
-            print("pool2",pool2.get_shape().as_list())
 
             conv_3_1 = self._vgg16_conv_stage(
                 input_tensor=pool2, k_size=3,
                 out_dims=256, name='conv3_1',
                 need_layer_norm=True
             )
-            print("conv3_1",conv_3_1.get_shape().as_list())
 
             conv_3_2 = self._vgg16_conv_stage(
                 input_tensor=conv_3_1, k_size=3,
                 out_dims=256, name='conv3_2',
                 need_layer_norm=True
             )
-            print("conv3_2",conv_3_2.get_shape().as_list())
 
             conv_3_3 = self._vgg16_conv_stage(
                 input_tensor=conv_3_2, k_size=3,
                 out_dims=256, name='conv3_3',
                 need_layer_norm=True
             )
-            print("conv3_3",conv_3_3.get_shape().as_list())
 
             self._net_intermediate_results['encode_stage_3_share'] = {
                 'data': conv_3_3,
@@ -292,28 +281,24 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                 inputdata=conv_3_3, kernel_size=2,
                 stride=2, name='pool3'
             )
-            print("pool3",pool3.get_shape().as_list())
 
             conv_4_1 = self._vgg16_conv_stage(
                 input_tensor=pool3, k_size=3,
                 out_dims=512, name='conv4_1',
                 need_layer_norm=True
             )
-            print("conv4_1",conv_4_1.get_shape().as_list())
 
             conv_4_2 = self._vgg16_conv_stage(
                 input_tensor=conv_4_1, k_size=3,
                 out_dims=512, name='conv4_2',
                 need_layer_norm=True
             )
-            print("conv4_2",conv_4_2.get_shape().as_list())
 
             conv_4_3 = self._vgg16_conv_stage(
                 input_tensor=conv_4_2, k_size=3,
                 out_dims=512, name='conv4_3',
                 need_layer_norm=True
             )
-            print("conv4_3",conv_4_3.get_shape().as_list())
 
             self._net_intermediate_results['encode_stage_4_share'] = {
                 'data': conv_4_3,
@@ -325,33 +310,31 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                 inputdata=conv_4_3, kernel_size=2,
                 stride=2, name='pool4'
             )
-            print("pool4",pool4.get_shape().as_list())
 
             conv_5_1_binary = self._vgg16_conv_stage(
                 input_tensor=pool4, k_size=3,
                 out_dims=512, name='conv5_1_binary',
                 need_layer_norm=True
             )
-            print("conv5_1",conv_5_1_binary.get_shape().as_list())
 
             conv_5_2_binary = self._vgg16_conv_stage(
                 input_tensor=conv_5_1_binary, k_size=3,
                 out_dims=512, name='conv5_2_binary',
                 need_layer_norm=True
             )
-            print("conv5_2",conv_5_2_binary.get_shape().as_list())
 
             conv_5_3_binary = self._vgg16_conv_stage(
                 input_tensor=conv_5_2_binary, k_size=3,
                 out_dims=512, name='conv5_3_binary',
                 need_layer_norm=True
             )
-            print("conv5_3",conv_5_3_binary .get_shape().as_list())
 
             self._net_intermediate_results['encode_stage_5_binary'] = {
                 'data': conv_5_3_binary,
                 'shape': conv_5_3_binary.get_shape().as_list()
             }
+            print("encode binary shape: ",  self._net_intermediate_results['encode_stage_5_binary']['shape'])
+
 
             # encode stage 5 for instance segmentation
             conv_5_1_instance = self._vgg16_conv_stage(
@@ -373,6 +356,7 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                 'data': conv_5_3_instance,
                 'shape': conv_5_3_instance.get_shape().as_list()
             }
+            print("encode instance shape: ",  self._net_intermediate_results['encode_stage_5_instance']['shape'])
 
         return
 
@@ -417,7 +401,7 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                     mean=0.0, stddev=binary_final_logits_conv_weights_stddev)
 
                 binary_final_logits = self.conv2d(
-                    inputdata=decode_stage_1_fuse, out_channel=CFG.TRAIN.CLASSES_NUMS,
+                    inputdata=decode_stage_1_fuse, out_channel=CFG.TRAIN.CLASSES_NUMS,  # CLASSES_NUMS = 2
                     kernel_size=1, use_bias=False,
                     w_init=binary_final_logits_conv_weights_init,
                     name='binary_final_logits')
@@ -454,6 +438,7 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                     'data': decode_stage_1_fuse,
                     'shape': decode_stage_1_fuse.get_shape().as_list()
                 }
+
 
     def build_model(self, input_tensor, name, reuse=False):
         print("vgg16 build model")

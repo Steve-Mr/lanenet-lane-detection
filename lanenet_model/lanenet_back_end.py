@@ -169,6 +169,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
             with tf.variable_scope(name_or_scope='binary_seg'):
                 binary_seg_score = tf.nn.softmax(logits=binary_seg_logits)
                 """
+                归一化
                 将一个含任意实数的K维向量“压缩”到另一个K维实向量中，使得每一个元素的范围都在之间，并且所有元素的和为1
                 Returns:
                 A `Tensor`. Has the same type and shape as `logits`.
