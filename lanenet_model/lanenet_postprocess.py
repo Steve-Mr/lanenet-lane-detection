@@ -16,6 +16,7 @@ import glog as log
 import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
 
 from config import global_config
 
@@ -209,31 +210,11 @@ class _LaneNetCluster(object):
         """
         try:
             features = StandardScaler().fit_transform(embedding_image_feats)
-            print("embedding_image_feats")
-            print(embedding_image_feats)
-            print("features")
-            print(features)
             # fit_transform 不仅计算训练数据的均值和方差，
             # 还会基于计算出来的均值和方差来转换训练数据，从而把数据转换成标准的正太分布
             db.fit(features)
             """
-            fit(self, X, y=None, sample_weight=None):
             Perform DBSCAN clustering from features or distance matrix.
-
-            Parameters
-            ----------
-            X : array or sparse (CSR) matrix of shape (n_samples, n_features), or \
-                    array of shape (n_samples, n_samples)
-                A feature array, or array of distances between samples if
-                ``metric='precomputed'``.
-            sample_weight : array, shape (n_samples,), optional
-                Weight of each sample, such that a sample with a weight of at least
-                ``min_samples`` is by itself a core sample; a sample with negative
-                weight may inhibit its eps-neighbor from being core.
-                Note that weights are absolute, and default to 1.
-
-            y : Ignored
-
             """
         except Exception as err:
             log.error(err)
@@ -246,6 +227,7 @@ class _LaneNetCluster(object):
             }
             return ret
         db_labels = db.labels_
+        # 标记所有像素点
         unique_labels = np.unique(db_labels)
 
         num_clusters = len(unique_labels)
@@ -309,25 +291,42 @@ class _LaneNetCluster(object):
         :param instance_seg_result:
         :return:
         """
+
+        get_lane_embedding_feats_result = self._get_lane_embedding_feats(
+            binary_seg_ret=binary_seg_result,
+            instance_seg_ret=instance_seg_result
+        )
         # get embedding feats and coords
         """
         {   'lane_embedding_feats': lane_embedding_feats,
             'lane_coordinates': lane_coordinate
         }
         """
-        get_lane_embedding_feats_result = self._get_lane_embedding_feats(
-            binary_seg_ret=binary_seg_result,
-            instance_seg_ret=instance_seg_result
-        )
 
         # dbscan cluster
         dbscan_cluster_result = self._embedding_feats_dbscan_cluster(
             embedding_image_feats=get_lane_embedding_feats_result['lane_embedding_feats']
         )
+        """
+        ret = {
+            'origin_features': features,
+            'cluster_nums': num_clusters,
+            'db_labels': db_labels,
+            'unique_labels': unique_labels,
+            'cluster_center': cluster_centers
+        }
+        """
 
         mask = np.zeros(shape=[binary_seg_result.shape[0], binary_seg_result.shape[1], 3], dtype=np.uint8)
-        db_labels = dbscan_cluster_result['db_labels']
-        unique_labels = dbscan_cluster_result['unique_labels']
+        # 将 mask 初始化为空白矩阵（图）
+        """
+        用法：zeros(shape, dtype=float, order='C')
+        返回：返回来一个给定形状和类型的用0填充的数组；
+        参数：shape:形状
+              dtype:数据类型，可选参数，默认numpy.float64
+            """
+        db_labels = dbscan_cluster_result['db_labels']          # example: [-1 -1 -1 ...  2 -1 -1]
+        unique_labels = dbscan_cluster_result['unique_labels']  # example: [-1  0  1  2  3  4]
         coord = get_lane_embedding_feats_result['lane_coordinates']
 
         if db_labels is None:
@@ -336,11 +335,14 @@ class _LaneNetCluster(object):
         lane_coords = []
 
         for index, label in enumerate(unique_labels.tolist()):
-            if label == -1:
+            if label == -1:     # -1 为背景像素点
                 continue
             idx = np.where(db_labels == label)
-            pix_coord_idx = tuple((coord[idx][:, 1], coord[idx][:, 0]))
+            pix_coord_idx = tuple((coord[idx][:, 1], coord[idx][:, 0]))     # tuple 即元组 不可修改
+            # 获得所有属于该 label 的点坐标
+            # coord[idx]第1列全部，coord[idx]第0列全部
             mask[pix_coord_idx] = self._color_map[index]
+            # 给线条上色
             lane_coords.append(coord[idx])
 
         return mask, lane_coords
@@ -364,6 +366,7 @@ class LaneNetPostProcessor(object):
         # 替代 H-NET 作用
 
         remap_file_load_ret = self._load_remap_matrix()
+        # 读取预存 remap 矩阵
         self._remap_to_ipm_x = remap_file_load_ret['remap_to_ipm_x']
         self._remap_to_ipm_y = remap_file_load_ret['remap_to_ipm_y']
 
@@ -386,6 +389,7 @@ class LaneNetPostProcessor(object):
         fs = cv2.FileStorage(self._ipm_remap_file_path, cv2.FILE_STORAGE_READ)
 
         remap_to_ipm_x = fs.getNode('remap_ipm_x').mat()
+        # 读取矩阵型节点
         remap_to_ipm_y = fs.getNode('remap_ipm_y').mat()
 
         ret = {
@@ -422,8 +426,6 @@ class LaneNetPostProcessor(object):
         # 进行连通域分析
         connect_components_analysis_ret = _connect_components_analysis(image=morphological_ret)
 
-        print(connect_components_analysis_ret)
-
         # 排序连通域并删除过小的连通域
         labels = connect_components_analysis_ret[1]
         stats = connect_components_analysis_ret[2]
@@ -443,11 +445,8 @@ class LaneNetPostProcessor(object):
                 cv2.CC_STAT_HEIGHT The vertical size of the bounding box
                 cv2.CC_STAT_AREA The total area (in pixels) of the connected component
         """
-        print("stats")
-        print(stats)
 
         for index, stat in enumerate(stats):
-            print("stat4", stat[4])
             if stat[4] <= min_area_threshold:
                 idx = np.where(labels == index)
                 morphological_ret[idx] = 0
@@ -457,7 +456,11 @@ class LaneNetPostProcessor(object):
             binary_seg_result=morphological_ret,
             instance_seg_result=instance_seg_result
         )
-
+        """
+        plt.figure('mask_image')
+        plt.imshow(mask_image[:, :, (2, 1, 0)])
+        plt.show()
+        """
         if mask_image is None:
             return {
                 'mask_image': None,
@@ -475,6 +478,7 @@ class LaneNetPostProcessor(object):
             if data_source == 'tusimple':
                 tmp_mask = np.zeros(shape=(720, 1280), dtype=np.uint8)
                 tmp_mask[tuple((np.int_(coords[:, 1] * 720 / 256), np.int_(coords[:, 0] * 1280 / 512)))] = 255
+                # 新建空白 tmp_mask 并根据 mask_image 已有坐标进行变换后改变对应坐标的值
             elif data_source == 'beec_ccd':
                 tmp_mask = np.zeros(shape=(1350, 2448), dtype=np.uint8)
                 tmp_mask[tuple((np.int_(coords[:, 1] * 1350 / 256), np.int_(coords[:, 0] * 2448 / 512)))] = 255
@@ -486,25 +490,31 @@ class LaneNetPostProcessor(object):
                 self._remap_to_ipm_y,
                 interpolation=cv2.INTER_NEAREST
             )
+            # 使用预设 ipm 进行视角转换 INTER_NEAREST——最近邻插值
             nonzero_y = np.array(tmp_ipm_mask.nonzero()[0])
             nonzero_x = np.array(tmp_ipm_mask.nonzero()[1])
 
             fit_param = np.polyfit(nonzero_y, nonzero_x, 2)
+            # 进行拟合，目标函数为二次函数
             fit_params.append(fit_param)
 
             [ipm_image_height, ipm_image_width] = tmp_ipm_mask.shape
             plot_y = np.linspace(10, ipm_image_height, ipm_image_height - 10)
+            # linspace(start, stop, num) 生成从 start 到 stop num 个数的等差数列
             fit_x = fit_param[0] * plot_y ** 2 + fit_param[1] * plot_y + fit_param[2]
-            # fit_x = fit_param[0] * plot_y ** 3 + fit_param[1] * plot_y ** 2 + fit_param[2] * plot_y + fit_param[3]
 
             lane_pts = []
+            # lane points 车道线点坐标
             for index in range(0, plot_y.shape[0], 5):
                 src_x = self._remap_to_ipm_x[
                     int(plot_y[index]), int(np.clip(fit_x[index], 0, ipm_image_width - 1))]
+                # np.clip(a, a_min, a_max, out=None) 限制 a 在 a_min 和 a_max 之间，超出部分则设置为 a_min 和 a_max
+                # src_x 为 remap ipm x 矩阵 index 对应 plot_y, fit_x 对应值
                 if src_x <= 0:
                     continue
                 src_y = self._remap_to_ipm_y[
                     int(plot_y[index]), int(np.clip(fit_x[index], 0, ipm_image_width - 1))]
+                # src_y 为 remap ipm x 矩阵 index 对应 plot_y, fit_x 对应值
                 src_y = src_y if src_y > 0 else 0
 
                 lane_pts.append([src_x, src_y])
