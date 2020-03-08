@@ -153,7 +153,12 @@ def test_lanenet(image_path, weights_path):
         mask_image = postprocess_result['mask_image']
 
         for i in range(CFG.TRAIN.EMBEDDING_FEATS_DIMS):
+            # __C.TRAIN.EMBEDDING_FEATS_DIMS = 4
             instance_seg_image[0][:, :, i] = minmax_scale(instance_seg_image[0][:, :, i])
+            # 与 instance_seg_image[0][:, :, i] =
+            # cv2.normalize(instance_seg_image[0][:, :, i], None, 0, 255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC3)
+            # 功能相同
+            # 将bgr彩色矩阵归一化到0-255之间
         embedding_image = np.array(instance_seg_image[0], np.uint8)
 
         plt.figure('mask_image')

@@ -535,38 +535,49 @@ class LaneNetPostProcessor(object):
             else:
                 raise ValueError('Wrong data source now only support tusimple and beec_ccd')
             step = int(math.floor((end_plot_y - start_plot_y) / 10))
+            # math.floor 下舍去整
             for plot_y in np.linspace(start_plot_y, end_plot_y, step):
-                diff = single_lane_pt_y - plot_y
+                diff = single_lane_pt_y - plot_y                                    # （推断）预测车道线点与 plot_y 纵向距离
                 fake_diff_bigger_than_zero = diff.copy()
                 fake_diff_smaller_than_zero = diff.copy()
-                fake_diff_bigger_than_zero[np.where(diff <= 0)] = float('inf')
-                fake_diff_smaller_than_zero[np.where(diff > 0)] = float('-inf')
-                idx_low = np.argmax(fake_diff_smaller_than_zero)
-                idx_high = np.argmin(fake_diff_bigger_than_zero)
+                fake_diff_bigger_than_zero[np.where(diff <= 0)] = float('inf')      # 正无穷
+                fake_diff_smaller_than_zero[np.where(diff > 0)] = float('-inf')     # 负无穷
+                idx_low = np.argmax(fake_diff_smaller_than_zero)                    # smaller than zero 中最大值
+                idx_high = np.argmin(fake_diff_bigger_than_zero)                    # bigger than zero 中最小值
 
                 previous_src_pt_x = single_lane_pt_x[idx_low]
                 previous_src_pt_y = single_lane_pt_y[idx_low]
                 last_src_pt_x = single_lane_pt_x[idx_high]
                 last_src_pt_y = single_lane_pt_y[idx_high]
+                # 找到与 plot_y 最靠近的两个点
 
                 if previous_src_pt_y < start_plot_y or last_src_pt_y < start_plot_y or \
                         fake_diff_smaller_than_zero[idx_low] == float('-inf') or \
                         fake_diff_bigger_than_zero[idx_high] == float('inf'):
                     continue
+                    # 不符合要求的情况（plot_y 在点集范围边界）
 
                 interpolation_src_pt_x = (abs(previous_src_pt_y - plot_y) * previous_src_pt_x +
                                           abs(last_src_pt_y - plot_y) * last_src_pt_x) / \
-                                         (abs(previous_src_pt_y - plot_y) + abs(last_src_pt_y - plot_y))
+                                         (abs(previous_src_pt_y - plot_y) + abs(last_src_pt_y - plot_y))      # \ 在末尾时 续行符
                 interpolation_src_pt_y = (abs(previous_src_pt_y - plot_y) * previous_src_pt_y +
                                           abs(last_src_pt_y - plot_y) * last_src_pt_y) / \
                                          (abs(previous_src_pt_y - plot_y) + abs(last_src_pt_y - plot_y))
-
+                # 确定遮罩层车道线像素点坐标
                 if interpolation_src_pt_x > source_image_width or interpolation_src_pt_x < 10:
                     continue
 
                 lane_color = self._color_map[index].tolist()
                 cv2.circle(source_image, (int(interpolation_src_pt_x),
                                           int(interpolation_src_pt_y)), 5, lane_color, -1)
+                """
+                circle(img, center, radius, color, thickness=None, lineType=None, shift=None)
+                    img：在img上绘图;
+                    center：圆心；例如：(0,0)
+                    radius：半径；例如：20
+                    color：线的颜色；例如：(0,255,0)(绿色)
+                    thickness：线的粗细程度，例如：-1,1,2,3…
+                """
         ret = {
             'mask_image': mask_image,
             'fit_params': fit_params,
