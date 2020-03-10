@@ -41,18 +41,30 @@ def discriminative_loss_single(
     reshaped_pred = tf.reshape(
         prediction, [label_shape[1] * label_shape[0], feature_dim]
     )
+    # 将像素对齐为一行
 
     # calculate instance nums
     unique_labels, unique_id, counts = tf.unique_with_counts(correct_label)
-    counts = tf.cast(counts, tf.float32)
-    num_instances = tf.size(unique_labels)
+    """
+    统计实例个数
+        unique_labels：correct_label中一共有几种数值
+        unique_id：correct_label中的每个数值是属于unique_labels中第几类
+        counts：统计unique_labels中每个数值在correct_label中出现了几次
+    """
+    counts = tf.cast(counts, tf.float32)    # 每个实例占用的像素点量
+    num_instances = tf.size(unique_labels)  # 实例数量
 
-    # calculate instance pixel embedding mean vec
+    # 计算pixel embedding均值向量
+    # segmented_sum是把reshaped_pred中对于GT里每个部分位置上的像素点相加
+    # 比如unique_id[0, 0, 1, 1, 0],reshaped_pred[1, 2, 3, 4, 5]，最后等于[1+2+5,3+4],channel层不相加
     segmented_sum = tf.unsorted_segment_sum(
         reshaped_pred, unique_id, num_instances)
+    # 除以每个类别的像素在gt中出现的次数，是每个类别像素的均值 (?, feature_dim)
     mu = tf.div(segmented_sum, tf.reshape(counts, (-1, 1)))
+    # 然后再还原为原图的形式，现在mu_expand中的数据是与correct_label的分布一致，但是数值不一样
     mu_expand = tf.gather(mu, unique_id)
 
+    # 计算公式的loss(var)
     distance = tf.norm(tf.subtract(mu_expand, reshaped_pred), axis=1, ord=1)
     distance = tf.subtract(distance, delta_v)
     distance = tf.clip_by_value(distance, 0., distance)
@@ -63,6 +75,7 @@ def discriminative_loss_single(
     l_var = tf.reduce_sum(l_var)
     l_var = tf.divide(l_var, tf.cast(num_instances, tf.float32))
 
+    # 计算公式的loss(dist)
     mu_interleaved_rep = tf.tile(mu, [num_instances, 1])
     mu_band_rep = tf.tile(mu, [1, num_instances])
     mu_band_rep = tf.reshape(
@@ -73,6 +86,7 @@ def discriminative_loss_single(
 
     mu_diff = tf.subtract(mu_band_rep, mu_interleaved_rep)
 
+    # 去除掩模上的零点 ca != cb
     intermediate_tensor = tf.reduce_sum(tf.abs(mu_diff), axis=1)
     zero_vector = tf.zeros(1, dtype=tf.float32)
     bool_mask = tf.not_equal(intermediate_tensor, zero_vector)
@@ -85,8 +99,10 @@ def discriminative_loss_single(
 
     l_dist = tf.reduce_mean(mu_norm)
 
+    # 计算原始Discriminative Loss论文中提到的正则项损失
     l_reg = tf.reduce_mean(tf.norm(mu, axis=1, ord=1))
 
+    # 合并损失按照原始Discriminative Loss论文中提到的参数合并
     param_scale = 1.
     l_var = param_var * l_var
     l_dist = param_dist * l_dist

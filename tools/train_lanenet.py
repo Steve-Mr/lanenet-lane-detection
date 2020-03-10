@@ -504,6 +504,7 @@ def train_lanenet_multi_gpu(dataset_dir, weights_path=None, net_flag='vgg'):
     :return:
     """
     # set lanenet dataset
+    # 训练集和验证集
     train_dataset = lanenet_data_feed_pipline.LaneNetDataFeeder(
         dataset_dir=dataset_dir, flags='train'
     )
@@ -533,21 +534,41 @@ def train_lanenet_multi_gpu(dataset_dir, weights_path=None, net_flag='vgg'):
     # set lr
     global_step = tf.Variable(0, trainable=False)
     learning_rate = tf.train.polynomial_decay(
-        learning_rate=CFG.TRAIN.LEARNING_RATE,
+        learning_rate=CFG.TRAIN.LEARNING_RATE,  # 0.0005
         global_step=global_step,
-        decay_steps=CFG.TRAIN.EPOCHS,
+        decay_steps=CFG.TRAIN.EPOCHS,           # 80010
         power=0.9
     )
+    """
+    训练神经网络时,控制学习率对训练的速度和准确度都有很大作用.逐渐减小学习率在实践中被证明对训练的收敛有正向效果
+    函数使用多项式衰减，在给定的decay_steps将初始学习率衰减到指定的学习率 输入:
+        learning_rate：初始值
+        global_step：全局step数
+        decay_steps：学习率衰减的步数,也代表学习率每次更新相隔的步数
+        end_learning_rate：衰减最终值
+        power：多项式衰减系数
+        cycle：step超出decay_steps之后是否继续循环
+        name：操作的名称，默认为PolynomialDecay。
+    参数cycle目的：防止神经网络训练后期学习率过小导致网络一直在某个局部最小值中振荡；这样，通过增大学习率可以跳出局部极小值．
+    """
 
     # set optimizer
     optimizer = tf.train.MomentumOptimizer(
-        learning_rate=learning_rate, momentum=CFG.TRAIN.MOMENTUM
+        learning_rate=learning_rate, momentum=CFG.TRAIN.MOMENTUM            # momentum: 要在多大程度上保留原来的更新方向 (0.9)
     )
+    """
+    动量梯度下降算法
+    """
 
     # set distributed train op
     with tf.variable_scope(tf.get_variable_scope()):
         for i in range(CFG.TRAIN.GPU_NUM):
             with tf.device('/gpu:{:d}'.format(i)):
+                """
+                Returns:
+                    A context manager that specifies the default device to use for newly
+                    created ops.
+                """
                 with tf.name_scope('tower_{:d}'.format(i)) as _:
                     train_loss, grads = compute_net_gradients(
                         train_images, train_binary_labels, train_instance_labels, train_net, optimizer

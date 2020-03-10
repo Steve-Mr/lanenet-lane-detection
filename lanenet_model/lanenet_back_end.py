@@ -51,7 +51,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         print("backend compute class weighted cross entropy loss")
 
         """
-
+        用来计算神经元之间的权值的交叉熵损失函数
         :param onehot_labels:
         :param logits:
         :param classes_weights:
@@ -64,6 +64,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
             logits=logits,
             weights=loss_weights
         )
+        # 返回与logits具有相同类型的加权损失Tensor
 
         return loss
 
@@ -91,9 +92,14 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                         shape=[binary_label.get_shape().as_list()[0],
                                binary_label.get_shape().as_list()[1],
                                binary_label.get_shape().as_list()[2]]),
-                    depth=CFG.TRAIN.CLASSES_NUMS,
+                    depth=CFG.TRAIN.CLASSES_NUMS,   # 2
                     axis=-1
                 )
+                """
+                将input转化为one-hot类型数据输出，相当于将多个数值联合放在一起作为多个相同类型的向量，可用于表示各自的概率分布
+                函数规定输入的元素indices从0开始，最大的元素值不能超过（depth - 1），因此能够表示depth个单位的输入。
+                若输入的元素值超出范围，输出的编码均为 [0, 0 … 0, 0]。
+                """
 
                 binary_label_plain = tf.reshape(
                     binary_label,
@@ -102,11 +108,16 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                            binary_label.get_shape().as_list()[2] *
                            binary_label.get_shape().as_list()[3]])
                 unique_labels, unique_id, counts = tf.unique_with_counts(binary_label_plain)
+                """
+                一个张量 y,该张量包含出现在 x 中的以相同顺序排序的 x 的所有的唯一元素.
+                一个与 x 具有相同大小的张量 idx,包含唯一的输出 y 中 x 的每个值的索引.
+                一个张量 count,其中包含 x 中 y 的每个元素的计数
+                """
                 counts = tf.cast(counts, tf.float32)
                 inverse_weights = tf.divide(
                     1.0,
                     tf.log(tf.add(tf.divide(counts, tf.reduce_sum(counts)), tf.constant(1.02)))
-                )
+                )   # bounded inverse class weight 1/log(counts/all_counts + 1.02)
 
                 binary_segmenatation_loss = self._compute_class_weighted_cross_entropy_loss(
                     onehot_labels=binary_label_onehot,

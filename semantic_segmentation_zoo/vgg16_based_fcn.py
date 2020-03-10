@@ -411,6 +411,8 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                     'shape': binary_final_logits.get_shape().as_list()
                 }
 
+                print('shape', binary_final_logits.get_shape().as_list())
+
             with tf.variable_scope(name_or_scope='instance_seg_decode'):
                 decode_stage_5_instance = self._net_intermediate_results['encode_stage_5_instance']['data']
 
@@ -438,7 +440,6 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                     'data': decode_stage_1_fuse,
                     'shape': decode_stage_1_fuse.get_shape().as_list()
                 }
-
 
     def build_model(self, input_tensor, name, reuse=False):
         print("vgg16 build model")
