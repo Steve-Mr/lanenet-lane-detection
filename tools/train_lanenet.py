@@ -212,7 +212,7 @@ def compute_net_gradients(gt_images, gt_binary_labels, gt_instance_labels,
 
 def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
     """
-
+    单GPU情况下进行训练
     :param dataset_dir:
     :param net_flag: choose which base network to use
     :param weights_path:
@@ -224,6 +224,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
     val_dataset = lanenet_data_feed_pipline.LaneNetDataFeeder(
         dataset_dir=dataset_dir, flags='val'
     )
+    # 获取训练和验证集
 
     with tf.device('/gpu:1'):
         # set lanenet

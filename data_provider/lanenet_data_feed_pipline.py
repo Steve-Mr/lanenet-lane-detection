@@ -327,7 +327,7 @@ class LaneNetDataFeeder(object):
 
         tfrecords_file_paths = glob.glob('{:s}/{:s}*.tfrecords'.format(
             self._tfrecords_dir, self._dataset_flags)
-        )
+        )   # 匹配所有的符合条件的文件，并将其以list的形式返回。
         random.shuffle(tfrecords_file_paths)
 
         with tf.name_scope('input_tensor'):
@@ -346,7 +346,7 @@ class LaneNetDataFeeder(object):
             else:
                 dataset = dataset.map(map_func=tf_io_pipline_tools.augment_for_test,
                                       num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
-            dataset = dataset.map(map_func=tf_io_pipline_tools.normalize,
+            dataset = dataset.map(map_func=tf_io_pipline_tools.normalize,       # /127.5-1
                                   num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
 
             # The shuffle transformation uses a finite-sized buffer to shuffle elements
@@ -361,6 +361,10 @@ class LaneNetDataFeeder(object):
             dataset = dataset.batch(batch_size, drop_remainder=True)
 
             iterator = dataset.make_one_shot_iterator()
+            """
+            Returns:
+                  An `Iterator` over the elements of this dataset.
+            """
 
         return iterator.get_next(name='{:s}_IteratorGetNext'.format(self._dataset_flags))
 

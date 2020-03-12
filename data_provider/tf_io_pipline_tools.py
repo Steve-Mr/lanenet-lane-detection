@@ -20,10 +20,10 @@ from config import global_config
 
 CFG = global_config.cfg
 
-RESIZE_IMAGE_HEIGHT = CFG.TRAIN.IMG_HEIGHT + CFG.TRAIN.CROP_PAD_SIZE
-RESIZE_IMAGE_WIDTH = CFG.TRAIN.IMG_WIDTH + CFG.TRAIN.CROP_PAD_SIZE
-CROP_IMAGE_HEIGHT = CFG.TRAIN.IMG_HEIGHT
-CROP_IMAGE_WIDTH = CFG.TRAIN.IMG_WIDTH
+RESIZE_IMAGE_HEIGHT = CFG.TRAIN.IMG_HEIGHT + CFG.TRAIN.CROP_PAD_SIZE    # 256+32=288
+RESIZE_IMAGE_WIDTH = CFG.TRAIN.IMG_WIDTH + CFG.TRAIN.CROP_PAD_SIZE      # 512+32=544
+CROP_IMAGE_HEIGHT = CFG.TRAIN.IMG_HEIGHT                                # 512
+CROP_IMAGE_WIDTH = CFG.TRAIN.IMG_WIDTH                                  # 256
 
 
 def int64_feature(value):
@@ -111,7 +111,7 @@ def decode(serialized_example):
     :param serialized_example:
     :return:
     """
-    features = tf.parse_single_example(
+    features = tf.parse_single_example(     # 将Example协议内存块(protocol buffer)解析为张量
         serialized_example,
         # Defaults are not specified since both keys are required.
         features={
@@ -121,7 +121,7 @@ def decode(serialized_example):
         })
 
     # decode gt image
-    gt_image_shape = tf.stack([RESIZE_IMAGE_HEIGHT, RESIZE_IMAGE_WIDTH, 3])
+    gt_image_shape = tf.stack([RESIZE_IMAGE_HEIGHT, RESIZE_IMAGE_WIDTH, 3])     # 288,544
     gt_image = tf.decode_raw(features['gt_image_raw'], tf.uint8)
     gt_image = tf.reshape(gt_image, gt_image_shape)
 
@@ -159,7 +159,8 @@ def central_crop(image, crop_height, crop_width):
 
 def augment_for_train(gt_image, gt_binary_image, gt_instance_image):
     """
-
+    向原始训练集应用各种随机图像转换来创建新的训练图像
+    避免训练中过拟合
     :param gt_image:
     :param gt_binary_image:
     :param gt_instance_image:
@@ -308,13 +309,13 @@ def random_horizon_flip_batch_images(gt_image, gt_binary_image, gt_instance_imag
 
 def random_color_augmentation(gt_image, gt_binary_image, gt_instance_image):
     """
-    andom color augmentation
+    random color augmentation
     :param gt_image:
     :param gt_binary_image:
     :param gt_instance_image:
     :return:
     """
-    # first apply random saturation augmentation
+    # first apply random saturation augmentation (饱和度
     gt_image = tf.image.random_saturation(gt_image, 0.8, 1.2)
     # sencond apply random brightness augmentation
     gt_image = tf.image.random_brightness(gt_image, 0.05)
@@ -322,5 +323,6 @@ def random_color_augmentation(gt_image, gt_binary_image, gt_instance_image):
     gt_image = tf.image.random_contrast(gt_image, 0.7, 1.3)
 
     gt_image = tf.clip_by_value(gt_image, 0.0, 255.0)
+    # 保证每个像素点都在 0-255 之间
 
     return gt_image, gt_binary_image, gt_instance_image

@@ -21,6 +21,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
     """
     LaneNet backend branch which is mainly used for binary and instance segmentation loss calculation
     """
+
     def __init__(self, phase):
         print("backend __init__")
 
@@ -92,13 +93,28 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                         shape=[binary_label.get_shape().as_list()[0],
                                binary_label.get_shape().as_list()[1],
                                binary_label.get_shape().as_list()[2]]),
-                    depth=CFG.TRAIN.CLASSES_NUMS,   # 2
+                    depth=CFG.TRAIN.CLASSES_NUMS,  # 2
                     axis=-1
                 )
                 """
-                将input转化为one-hot类型数据输出，相当于将多个数值联合放在一起作为多个相同类型的向量，可用于表示各自的概率分布
-                函数规定输入的元素indices从0开始，最大的元素值不能超过（depth - 1），因此能够表示depth个单位的输入。
-                若输入的元素值超出范围，输出的编码均为 [0, 0 … 0, 0]。
+                indices是一个列表,指定张量中独热向量的独热位置，或者说indeces是非负整数表示的标签列表。len(indices)就是分类的类别数。
+                tf.one_hot返回的张量的阶数为indeces的阶数+1。
+                当indices的某个分量取-1时，即对应的向量没有独热值。
+                depth是每个独热向量的维度
+                on_value是独热值
+                off_value是非独热值
+                axis指定第几阶为depth维独热向量，默认为-1,即,指定张量的最后一维为独热向量
+                example:
+                    labels = [0, 2, -1, 1]
+                    # labels是shape=(4,)的张量。则返回的targets是shape=(len(labels), depth)张量。
+                    # 且这种情况下,axis=-1等价于axis=1
+                    targets = tf.one_hot(indices=labels, depth=5, on_value=1.0, off_value=0.0, axis=-1)
+                    with tf.Session() as sess:
+                        print(sess.run(targets))
+                    [[ 1.  0.  0.  0.  0.]
+                     [ 0.  0.  1.  0.  0.]
+                     [ 0.  0.  0.  0.  0.]
+                     [ 0.  1.  0.  0.  0.]]
                 """
 
                 binary_label_plain = tf.reshape(
@@ -106,9 +122,9 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                     shape=[binary_label.get_shape().as_list()[0] *
                            binary_label.get_shape().as_list()[1] *
                            binary_label.get_shape().as_list()[2] *
-                           binary_label.get_shape().as_list()[3]])
+                           binary_label.get_shape().as_list()[3]])  # 转化为一维
                 unique_labels, unique_id, counts = tf.unique_with_counts(binary_label_plain)
-                """
+                """返回值
                 一个张量 y,该张量包含出现在 x 中的以相同顺序排序的 x 的所有的唯一元素.
                 一个与 x 具有相同大小的张量 idx,包含唯一的输出 y 中 x 的每个值的索引.
                 一个张量 count,其中包含 x 中 y 的每个元素的计数
@@ -117,8 +133,10 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 inverse_weights = tf.divide(
                     1.0,
                     tf.log(tf.add(tf.divide(counts, tf.reduce_sum(counts)), tf.constant(1.02)))
-                )   # bounded inverse class weight 1/log(counts/all_counts + 1.02)
+                )  # bounded inverse class weight
+                # 1/log(counts/all_counts + 1.02)
 
+                #  Loss 使用交叉熵，为了解决样本分布不均衡的问题（属于车道线的像素远少于属于背景的像素）
                 binary_segmenatation_loss = self._compute_class_weighted_cross_entropy_loss(
                     onehot_labels=binary_label_onehot,
                     logits=binary_seg_logits,
@@ -133,7 +151,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 pix_relu = self.relu(inputdata=pix_bn, name='pix_relu')
                 pix_embedding = self.conv2d(
                     inputdata=pix_relu,
-                    out_channel=CFG.TRAIN.EMBEDDING_FEATS_DIMS,
+                    out_channel=CFG.TRAIN.EMBEDDING_FEATS_DIMS,     # 4
                     kernel_size=1,
                     use_bias=False,
                     name='pix_embedding_conv'
@@ -176,7 +194,6 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         :return:
         """
         with tf.variable_scope(name_or_scope=name, reuse=reuse):
-
             with tf.variable_scope(name_or_scope='binary_seg'):
                 binary_seg_score = tf.nn.softmax(logits=binary_seg_logits)
                 """
@@ -190,7 +207,6 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 # 返回最大值索引号 axis：选取的坐标值
 
             with tf.variable_scope(name_or_scope='instance_seg'):
-
                 pix_bn = self.layerbn(
                     inputdata=instance_seg_logits, is_training=self._is_training, name='pix_bn')
                 pix_relu = self.relu(inputdata=pix_bn, name='pix_relu')

@@ -83,6 +83,7 @@ class LaneNet(cnn_basenet.CNNBaseModel):
         """
         with tf.variable_scope(name_or_scope=name, reuse=self._reuse):
             # first extract image features
+            # 与训练过程中预测第一部相同，对图片进行卷积和反卷积
             extract_feats_result = self._frontend.build_model(
                 input_tensor=input_tensor,
                 name='{:s}_frontend'.format(self._net_flag),
