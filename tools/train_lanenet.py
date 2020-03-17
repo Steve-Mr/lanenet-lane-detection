@@ -247,11 +247,11 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
 
         train_prediction_logits = train_compute_ret['binary_seg_logits']
         train_prediction_score = tf.nn.softmax(logits=train_prediction_logits)
-        train_prediction = tf.argmax(train_prediction_score, axis=-1)
+        train_prediction = tf.argmax(train_prediction_score, axis=-1)               # 概率最大值
 
         train_accuracy = evaluate_model_utils.calculate_model_precision(
             train_compute_ret['binary_seg_logits'], train_binary_labels
-        )
+        )       # calculate accuracy acc = correct_nums / ground_truth_nums
         train_fp = evaluate_model_utils.calculate_model_fp(
             train_compute_ret['binary_seg_logits'], train_binary_labels
         )
@@ -265,7 +265,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
             img=train_pix_embedding
         )
 
-        train_cost_scalar = tf.summary.scalar(
+        train_cost_scalar = tf.summary.scalar(              # 用来显示标量信息
             name='train_cost', tensor=train_total_loss
         )
         train_accuracy_scalar = tf.summary.scalar(
@@ -283,13 +283,13 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
         train_fp_scalar = tf.summary.scalar(
             name='train_fp', tensor=train_fp
         )
-        train_binary_seg_ret_img = tf.summary.image(
+        train_binary_seg_ret_img = tf.summary.image(                    # 输出Summary带有图像的协议缓冲区 生成准确率标量图
             name='train_binary_seg_ret', tensor=train_binary_seg_ret_for_summary
         )
         train_embedding_feats_ret_img = tf.summary.image(
             name='train_embedding_feats_ret', tensor=train_embedding_ret_for_summary
         )
-        train_merge_summary_op = tf.summary.merge(
+        train_merge_summary_op = tf.summary.merge(                      # 对指定的汇总进行合并
             [train_accuracy_scalar, train_cost_scalar, train_binary_seg_loss_scalar,
              train_instance_seg_loss_scalar, train_fn_scalar, train_fp_scalar,
              train_binary_seg_ret_img, train_embedding_feats_ret_img]
@@ -367,10 +367,17 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
             decay_steps=CFG.TRAIN.EPOCHS,
             power=0.9
         )
+        """
+        多项式衰减
+        global_step = min(global_step,decay_steps)
+        decayed_learning_rate = (learning_rate-end_learning_rate)*(1-global_step/decay_steps)^ (power)+end_learning_rate
+        """
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        # tf.GraphKeys.UPDATE_OPS: 一个tensorflow的计算图中内置的一个集合，其中会保存一些需要在训练操作之前完成的操作
+
         with tf.control_dependencies(update_ops):
-            optimizer = tf.train.MomentumOptimizer(
+            optimizer = tf.train.MomentumOptimizer(     # 当前权值的改变会受到上一次权值改变的影响，类似于小球向下滚动的时候带上了惯性。这样可以加快小球的向下的速度。
                 learning_rate=learning_rate, momentum=CFG.TRAIN.MOMENTUM).minimize(
                 loss=train_total_loss,
                 var_list=tf.trainable_variables(),
@@ -401,7 +408,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
     summary_writer.add_graph(sess.graph)
 
     # Set the training parameters
-    train_epochs = CFG.TRAIN.EPOCHS
+    train_epochs = CFG.TRAIN.EPOCHS                         # 80010
 
     log.info('Global configuration is as follows:')
     log.info(CFG)
@@ -447,7 +454,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
                 )
             summary_writer.add_summary(summary=train_summary, global_step=epoch)
 
-            if epoch % CFG.TRAIN.DISPLAY_STEP == 0:
+            if epoch % CFG.TRAIN.DISPLAY_STEP == 0:                                     # CFG.TRAIN.DISPLAY_SETP = 1
                 log.info('Epoch: {:d} total_loss= {:6f} binary_seg_loss= {:6f} '
                          'instance_seg_loss= {:6f} accuracy= {:6f} fp= {:6f} fn= {:6f}'
                          ' lr= {:6f} mean_cost_time= {:5f}s '.
@@ -482,7 +489,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
             train_cost_time_mean.append(cost_time)
             summary_writer.add_summary(summary=val_summary, global_step=epoch)
 
-            if epoch % CFG.TRAIN.VAL_DISPLAY_STEP == 0:
+            if epoch % CFG.TRAIN.VAL_DISPLAY_STEP == 0:                                     # CFG.TRAIN.VAL.DISPLAY_STEP = 1000
                 log.info('Epoch_Val: {:d} total_loss= {:6f} binary_seg_loss= {:6f} '
                          'instance_seg_loss= {:6f} accuracy= {:6f} fp= {:6f} fn= {:6f}'
                          ' mean_cost_time= {:5f}s '.
