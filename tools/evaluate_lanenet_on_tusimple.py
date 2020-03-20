@@ -74,9 +74,10 @@ def test_lanenet_batch(src_dir, weights_path, save_dir):
         saver.restore(sess=sess, save_path=weights_path)
 
         image_list = glob.glob('{:s}/**/*.jpg'.format(src_dir), recursive=True)
+        # 返回所有匹配的文件路径列表
         avg_time_cost = []
         for index, image_path in tqdm.tqdm(enumerate(image_list), total=len(image_list)):
-
+                # tqdm: 进度条
             image = cv2.imread(image_path, cv2.IMREAD_COLOR)
             image_vis = image
             image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)

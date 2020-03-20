@@ -161,6 +161,11 @@ def test_lanenet(image_path, weights_path):
             # 将bgr彩色矩阵归一化到0-255之间
         embedding_image = np.array(instance_seg_image[0], np.uint8)
 
+        for op in tf.get_default_graph().get_operations():
+            print(str(op.name))
+
+        #print([n.name for n in tf.get_default_graph().as_graph_def().node])
+
         plt.figure('mask_image')
         plt.imshow(mask_image[:, :, (2, 1, 0)])
         plt.figure('src_image')
