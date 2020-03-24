@@ -30,7 +30,6 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
     """
 
     def __init__(self, phase):
-        print("vgg16 init")
 
         """
 
@@ -39,10 +38,8 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
         self._phase = phase
         self._is_training = self._is_net_for_training()
         self._net_intermediate_results = collections.OrderedDict()
-        print("now in vgg16")
 
     def _is_net_for_training(self):
-        print("vgg16 is for training")
 
         """
         if the net is used for training or not
@@ -80,7 +77,6 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
 
     def _vgg16_conv_stage(self, input_tensor, k_size, out_dims, name,
                           stride=1, pad='SAME', need_layer_norm=True):
-        print("vgg16 conv stage")
 
         """
         stack conv and activation in vgg16
@@ -114,7 +110,6 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                       out_channels_nums, name, kernel_size=4,
                       stride=2, use_bias=False,
                       previous_kernel_size=4, need_activate=True):
-        print("vgg16 decode block")
 
         """
 
@@ -198,7 +193,6 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
         return fuse_feats
 
     def _vgg16_fcn_encode(self, input_tensor, name):
-        print("vgg16 fcn encode")
 
         """
         根据vgg16框架对输入的tensor进行编码
@@ -333,7 +327,6 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                 'data': conv_5_3_binary,
                 'shape': conv_5_3_binary.get_shape().as_list()
             }
-            print("encode binary shape: ",  self._net_intermediate_results['encode_stage_5_binary']['shape'])
 
 
             # encode stage 5 for instance segmentation
@@ -356,12 +349,10 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                 'data': conv_5_3_instance,
                 'shape': conv_5_3_instance.get_shape().as_list()
             }
-            print("encode instance shape: ",  self._net_intermediate_results['encode_stage_5_instance']['shape'])
 
         return
 
     def _vgg16_fcn_decode(self, name):
-        print("vgg16 fcn decode")
 
         """
 
@@ -411,7 +402,6 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                     'shape': binary_final_logits.get_shape().as_list()
                 }
 
-                print('shape', binary_final_logits.get_shape().as_list())
 
             with tf.variable_scope(name_or_scope='instance_seg_decode'):
                 decode_stage_5_instance = self._net_intermediate_results['encode_stage_5_instance']['data']
@@ -442,7 +432,6 @@ class VGG16FCN(cnn_basenet.CNNBaseModel):
                 }
 
     def build_model(self, input_tensor, name, reuse=False):
-        print("vgg16 build model")
 
         """
         :param input_tensor:
@@ -490,7 +479,6 @@ if __name__ == '__main__':
 
     image = image / 127.5 - 1.0  # 归一化 (只归一未改变维数)
 
-    print("shape", image.shape)
     input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
     model = VGG16FCN(phase='test')
     model._vgg16_fcn_encode(input_tensor=input_tensor, name='vgg16_encode_module')
@@ -498,6 +486,7 @@ if __name__ == '__main__':
     # 使用转置卷积做上采样
     model._vgg16_fcn_decode(name='vgg16_decode_module')
     decode_binary = model._net_intermediate_results['binary_segment_logits']['data']
+    print("binary_seg_logits: ", decode_binary.shape)
     decode_instance = model._net_intermediate_results['instance_segment_logits']['data']
     enbinary = model._net_intermediate_results['encode_stage_5_binary']['data']
     eninstance = model._net_intermediate_results['encode_stage_5_instance']['data']

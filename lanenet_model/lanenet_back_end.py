@@ -23,7 +23,6 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
     """
 
     def __init__(self, phase):
-        print("backend __init__")
 
         """
         init lanenet backend
@@ -34,7 +33,6 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         self._is_training = self._is_net_for_training()
 
     def _is_net_for_training(self):
-        print("backend is for training")
 
         """
         if the net is used for training or not
@@ -49,7 +47,6 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
 
     @classmethod
     def _compute_class_weighted_cross_entropy_loss(cls, onehot_labels, logits, classes_weights):
-        print("backend compute class weighted cross entropy loss")
 
         """
         用来计算神经元之间的权值的交叉熵损失函数
@@ -72,7 +69,6 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
     def compute_loss(self, binary_seg_logits, binary_label,
                      instance_seg_logits, instance_label,
                      name, reuse):
-        print("backend compute_loss")
 
         """
         compute lanenet loss
@@ -183,7 +179,6 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         return ret
 
     def inference(self, binary_seg_logits, instance_seg_logits, name, reuse):
-        print("backend inference")
 
         """
 

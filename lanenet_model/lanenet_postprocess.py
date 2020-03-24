@@ -24,8 +24,6 @@ CFG = global_config.cfg
 
 
 def _morphological_process(image, kernel_size=5):
-    print("lanenet postprocess morphological")
-
     """
     morphological process to fill the hole in the binary segmentation result
     :param image:
@@ -61,8 +59,6 @@ def _morphological_process(image, kernel_size=5):
 
 
 def _connect_components_analysis(image):
-    print("lanenet postprocess connect components analysis")
-
     """
     connect components analysis to remove the small components
     :param image:
@@ -81,8 +77,8 @@ class _LaneFeat(object):
     """
 
     """
+
     def __init__(self, feat, coord, class_id=-1):
-        print("lanenet postprocess lanefeat __init__")
 
         """
         lane feat object
@@ -96,7 +92,6 @@ class _LaneFeat(object):
 
     @property
     def feat(self):
-        print("lanenet postprocess lanefeat feat1")
 
         """
 
@@ -106,7 +101,6 @@ class _LaneFeat(object):
 
     @feat.setter
     def feat(self, value):
-        print("lanenet postprocess lanefeat feat2")
 
         """
 
@@ -123,7 +117,6 @@ class _LaneFeat(object):
 
     @property
     def coord(self):
-        print("lanenet postprocess lanefeat coord1")
 
         """
 
@@ -133,7 +126,6 @@ class _LaneFeat(object):
 
     @coord.setter
     def coord(self, value):
-        print("lanenet postprocess lanefeat coord2")
 
         """
 
@@ -150,7 +142,6 @@ class _LaneFeat(object):
 
     @property
     def class_id(self):
-        print("lanenet postprocess lanefeat classid1")
 
         """
 
@@ -160,7 +151,6 @@ class _LaneFeat(object):
 
     @class_id.setter
     def class_id(self, value):
-        print("lanenet postprocess lanefeat classid2")
 
         """
 
@@ -180,7 +170,6 @@ class _LaneNetCluster(object):
     """
 
     def __init__(self):
-        print("lanenet postprocess cluster init")
 
         """
 
@@ -196,7 +185,6 @@ class _LaneNetCluster(object):
 
     @staticmethod
     def _embedding_feats_dbscan_cluster(embedding_image_feats):
-        print("lanenet postprocess cluster dbscan")
 
         """
         dbscan cluster
@@ -245,7 +233,6 @@ class _LaneNetCluster(object):
 
     @staticmethod
     def _get_lane_embedding_feats(binary_seg_ret, instance_seg_ret):
-        print("lanenet postprocess cluster get lane embedding feats")
 
         """
         通过二值分割掩码图在实例分割图上获取所有车道线的特征向量
@@ -283,7 +270,6 @@ class _LaneNetCluster(object):
         return ret
 
     def apply_lane_feats_cluster(self, binary_seg_result, instance_seg_result):
-        print("lanenet postprocess cluster apply lane feats")
 
         """
 
@@ -325,7 +311,7 @@ class _LaneNetCluster(object):
         参数：shape:形状
               dtype:数据类型，可选参数，默认numpy.float64
             """
-        db_labels = dbscan_cluster_result['db_labels']          # example: [-1 -1 -1 ...  2 -1 -1]
+        db_labels = dbscan_cluster_result['db_labels']  # example: [-1 -1 -1 ...  2 -1 -1]
         unique_labels = dbscan_cluster_result['unique_labels']  # example: [-1  0  1  2  3  4]
         coord = get_lane_embedding_feats_result['lane_coordinates']
 
@@ -335,10 +321,10 @@ class _LaneNetCluster(object):
         lane_coords = []
 
         for index, label in enumerate(unique_labels.tolist()):
-            if label == -1:     # -1 为背景像素点
+            if label == -1:  # -1 为背景像素点
                 continue
             idx = np.where(db_labels == label)
-            pix_coord_idx = tuple((coord[idx][:, 1], coord[idx][:, 0]))     # tuple 即元组 不可修改
+            pix_coord_idx = tuple((coord[idx][:, 1], coord[idx][:, 0]))  # tuple 即元组 不可修改
             # 获得所有属于该 label 的点坐标
             # coord[idx]第1列全部，coord[idx]第0列全部
             mask[pix_coord_idx] = self._color_map[index]
@@ -352,8 +338,8 @@ class LaneNetPostProcessor(object):
     """
     lanenet post process for lane generation
     """
+
     def __init__(self, ipm_remap_file_path='./data/tusimple_ipm_remap.yml'):
-        print("lanenet postprocess processor init")
 
         """
 
@@ -380,7 +366,6 @@ class LaneNetPostProcessor(object):
                            np.array([100, 50, 100])]
 
     def _load_remap_matrix(self):
-        print("lanenet postprocess processor load remap matrix")
 
         """
 
@@ -404,7 +389,6 @@ class LaneNetPostProcessor(object):
     def postprocess(self, binary_seg_result, instance_seg_result=None,
                     min_area_threshold=100, source_image=None,
                     data_source='tusimple'):
-        print("lanenet postprocess processor postprocess")
 
         """
 
@@ -456,11 +440,7 @@ class LaneNetPostProcessor(object):
             binary_seg_result=morphological_ret,
             instance_seg_result=instance_seg_result
         )
-        """
-        plt.figure('mask_image')
-        plt.imshow(mask_image[:, :, (2, 1, 0)])
-        plt.show()
-        """
+
         if mask_image is None:
             return {
                 'mask_image': None,
@@ -537,13 +517,13 @@ class LaneNetPostProcessor(object):
             step = int(math.floor((end_plot_y - start_plot_y) / 10))
             # math.floor 下舍去整
             for plot_y in np.linspace(start_plot_y, end_plot_y, step):
-                diff = single_lane_pt_y - plot_y                                    # （推断）预测车道线点与 plot_y 纵向距离
+                diff = single_lane_pt_y - plot_y  # （推断）预测车道线点与 plot_y 纵向距离
                 fake_diff_bigger_than_zero = diff.copy()
                 fake_diff_smaller_than_zero = diff.copy()
-                fake_diff_bigger_than_zero[np.where(diff <= 0)] = float('inf')      # 正无穷
-                fake_diff_smaller_than_zero[np.where(diff > 0)] = float('-inf')     # 负无穷
-                idx_low = np.argmax(fake_diff_smaller_than_zero)                    # smaller than zero 中最大值
-                idx_high = np.argmin(fake_diff_bigger_than_zero)                    # bigger than zero 中最小值
+                fake_diff_bigger_than_zero[np.where(diff <= 0)] = float('inf')  # 正无穷
+                fake_diff_smaller_than_zero[np.where(diff > 0)] = float('-inf')  # 负无穷
+                idx_low = np.argmax(fake_diff_smaller_than_zero)  # smaller than zero 中最大值
+                idx_high = np.argmin(fake_diff_bigger_than_zero)  # bigger than zero 中最小值
 
                 previous_src_pt_x = single_lane_pt_x[idx_low]
                 previous_src_pt_y = single_lane_pt_y[idx_low]
@@ -559,7 +539,7 @@ class LaneNetPostProcessor(object):
 
                 interpolation_src_pt_x = (abs(previous_src_pt_y - plot_y) * previous_src_pt_x +
                                           abs(last_src_pt_y - plot_y) * last_src_pt_x) / \
-                                         (abs(previous_src_pt_y - plot_y) + abs(last_src_pt_y - plot_y))      # \ 在末尾时 续行符
+                                         (abs(previous_src_pt_y - plot_y) + abs(last_src_pt_y - plot_y))  # \ 在末尾时 续行符
                 interpolation_src_pt_y = (abs(previous_src_pt_y - plot_y) * previous_src_pt_y +
                                           abs(last_src_pt_y - plot_y) * last_src_pt_y) / \
                                          (abs(previous_src_pt_y - plot_y) + abs(last_src_pt_y - plot_y))
@@ -580,6 +560,196 @@ class LaneNetPostProcessor(object):
                 """
         ret = {
             'mask_image': mask_image,
+            'fit_params': fit_params,
+            'source_image': source_image,
+        }
+
+        return ret
+
+    def postprocess_for_test(self, binary_seg_result, instance_seg_result=None,
+                             min_area_threshold=100, source_image=None,
+                             data_source='tusimple'):
+
+        """
+
+        :param binary_seg_result:
+        :param instance_seg_result:
+        :param min_area_threshold: 连通域分析阈值
+        :param source_image:
+        :param data_source:
+        :return:
+        """
+        background_image = np.zeros([720, 1280, 1], np.uint8)
+
+        # convert binary_seg_result
+        #
+        binary_seg_result = np.array(binary_seg_result * 255, dtype=np.uint8)
+
+        # 首先进行图像形态学运算 闭运算 先膨胀后腐蚀
+        # apply image morphology operation to fill in the hold and reduce the small area
+        morphological_ret = _morphological_process(binary_seg_result, kernel_size=5)
+
+        # 进行连通域分析
+        connect_components_analysis_ret = _connect_components_analysis(image=morphological_ret)
+
+        # 排序连通域并删除过小的连通域
+        labels = connect_components_analysis_ret[1]
+        stats = connect_components_analysis_ret[2]
+        """
+        Get the results
+        The first cell is the number of labels 
+        The second cell is the label matrix
+            (Labels is a matrix the size of the input image where each element has a value equal to its label).
+        The third cell is the stat matrix 
+            (Stats is a matrix of the stats that the function calculates. It has a length equal to the number of labels 
+             and a width equal to the number of stats.)
+            Statistics output for each label, including the background label, see below for available statistics. 
+            Statistics are accessed via stats[label, COLUMN] where available columns are defined below.
+                cv2.CC_STAT_LEFT The leftmost (x) coordinate which is the inclusive start of the bounding box in the horizontal direction.
+                cv2.CC_STAT_TOP The topmost (y) coordinate which is the inclusive start of the bounding box in the vertical direction.
+                cv2.CC_STAT_WIDTH The horizontal size of the bounding box
+                cv2.CC_STAT_HEIGHT The vertical size of the bounding box
+                cv2.CC_STAT_AREA The total area (in pixels) of the connected component
+        """
+
+        for index, stat in enumerate(stats):
+            if stat[4] <= min_area_threshold:
+                idx = np.where(labels == index)
+                morphological_ret[idx] = 0
+
+        # apply embedding features cluster
+        mask_image, lane_coords = self._cluster.apply_lane_feats_cluster(
+            binary_seg_result=morphological_ret,
+            instance_seg_result=instance_seg_result
+        )
+
+        if mask_image is None:
+            return {
+                'mask_image': None,
+                'fit_params': None,
+                'source_image': None,
+            }
+
+        """
+        lane line fit
+        """
+
+        fit_params = []
+        src_lane_pts = []  # lane pts every single lane
+        for lane_index, coords in enumerate(lane_coords):
+            if data_source == 'tusimple':
+                tmp_mask = np.zeros(shape=(720, 1280), dtype=np.uint8)
+                tmp_mask[tuple((np.int_(coords[:, 1] * 720 / 256), np.int_(coords[:, 0] * 1280 / 512)))] = 255
+                # 新建空白 tmp_mask 并根据 mask_image 已有坐标进行变换后改变对应坐标的值
+            elif data_source == 'beec_ccd':
+                tmp_mask = np.zeros(shape=(1350, 2448), dtype=np.uint8)
+                tmp_mask[tuple((np.int_(coords[:, 1] * 1350 / 256), np.int_(coords[:, 0] * 2448 / 512)))] = 255
+            else:
+                raise ValueError('Wrong data source now only support tusimple and beec_ccd')
+            tmp_ipm_mask = cv2.remap(
+                tmp_mask,
+                self._remap_to_ipm_x,
+                self._remap_to_ipm_y,
+                interpolation=cv2.INTER_NEAREST
+            )
+            # 使用预设 ipm 进行视角转换 INTER_NEAREST——最近邻插值
+            nonzero_y = np.array(tmp_ipm_mask.nonzero()[0])
+            nonzero_x = np.array(tmp_ipm_mask.nonzero()[1])
+
+            fit_param = np.polyfit(nonzero_y, nonzero_x, 2)
+            # 进行拟合，目标函数为二次函数
+            fit_params.append(fit_param)
+
+            [ipm_image_height, ipm_image_width] = tmp_ipm_mask.shape
+            plot_y = np.linspace(10, ipm_image_height, ipm_image_height - 10)
+            # linspace(start, stop, num) 生成从 start 到 stop num 个数的等差数列
+            fit_x = fit_param[0] * plot_y ** 2 + fit_param[1] * plot_y + fit_param[2]
+
+            lane_pts = []
+            # lane points 车道线点坐标-
+            for index in range(0, plot_y.shape[0], 5):
+                src_x = self._remap_to_ipm_x[
+                    int(plot_y[index]), int(np.clip(fit_x[index], 0, ipm_image_width - 1))]
+                # np.clip(a, a_min, a_max, out=None) 限制 a 在 a_min 和 a_max 之间，超出部分则设置为 a_min 和 a_max
+                # src_x 为 remap ipm x 矩阵 index 对应 plot_y, fit_x 对应值
+                if src_x <= 0:
+                    continue
+                src_y = self._remap_to_ipm_y[
+                    int(plot_y[index]), int(np.clip(fit_x[index], 0, ipm_image_width - 1))]
+                # src_y 为 remap ipm x 矩阵 index 对应 plot_y, fit_x 对应值
+                src_y = src_y if src_y > 0 else 0
+
+                lane_pts.append([src_x, src_y])
+
+            src_lane_pts.append(lane_pts)
+
+        # tusimple test data sample point along y axis every 10 pixels
+        source_image_width = source_image.shape[1]
+        pts_x = []
+        pts_y = []
+        for index, single_lane_pts in enumerate(src_lane_pts):
+            single_lane_pt_x = np.array(single_lane_pts, dtype=np.float32)[:, 0]
+            single_lane_pt_y = np.array(single_lane_pts, dtype=np.float32)[:, 1]
+            if data_source == 'tusimple':
+                start_plot_y = 160
+                end_plot_y = 710
+            elif data_source == 'beec_ccd':
+                start_plot_y = 820
+                end_plot_y = 1350
+            else:
+                raise ValueError('Wrong data source now only support tusimple and beec_ccd')
+            step = 10  # int(math.floor((end_plot_y - start_plot_y) / 10))
+            # math.floor 下舍去整
+
+            for plot_y in np.linspace(start_plot_y, end_plot_y, step):
+                diff = single_lane_pt_y - plot_y  # （推断）预测车道线点与 plot_y 纵向距离
+                fake_diff_bigger_than_zero = diff.copy()
+                fake_diff_smaller_than_zero = diff.copy()
+                fake_diff_bigger_than_zero[np.where(diff <= 0)] = float('inf')  # 正无穷
+                fake_diff_smaller_than_zero[np.where(diff > 0)] = float('-inf')  # 负无穷
+                idx_low = np.argmax(fake_diff_smaller_than_zero)  # smaller than zero 中最大值
+                idx_high = np.argmin(fake_diff_bigger_than_zero)  # bigger than zero 中最小值
+
+                previous_src_pt_x = single_lane_pt_x[idx_low]
+                previous_src_pt_y = single_lane_pt_y[idx_low]
+                last_src_pt_x = single_lane_pt_x[idx_high]
+                last_src_pt_y = single_lane_pt_y[idx_high]
+                # 找到与 plot_y 最靠近的两个点
+
+                if previous_src_pt_y < start_plot_y or last_src_pt_y < start_plot_y or \
+                        fake_diff_smaller_than_zero[idx_low] == float('-inf') or \
+                        fake_diff_bigger_than_zero[idx_high] == float('inf'):
+                    continue
+                    # 不符合要求的情况（plot_y 在点集范围边界）
+
+                interpolation_src_pt_x = (abs(previous_src_pt_y - plot_y) * previous_src_pt_x +
+                                          abs(last_src_pt_y - plot_y) * last_src_pt_x) / \
+                                         (abs(previous_src_pt_y - plot_y) + abs(last_src_pt_y - plot_y))  # \ 在末尾时 续行符
+                interpolation_src_pt_y = (abs(previous_src_pt_y - plot_y) * previous_src_pt_y +
+                                          abs(last_src_pt_y - plot_y) * last_src_pt_y) / \
+                                         (abs(previous_src_pt_y - plot_y) + abs(last_src_pt_y - plot_y))
+                # 确定遮罩层车道线像素点坐标
+                if interpolation_src_pt_x > source_image_width or interpolation_src_pt_x < 10:
+                    continue
+
+                lane_color = self._color_map[index].tolist()
+
+                cv2.circle(background_image, (int(interpolation_src_pt_x),
+                                              int(interpolation_src_pt_y)), 5, 255, -1)
+                pts_x.append(interpolation_src_pt_x)
+                pts_y.append(interpolation_src_pt_y)
+                """
+                circle(img, center, radius, color, thickness=None, lineType=None, shift=None)
+                    img：在img上绘图;
+                    center：圆心；例如：(0,0)
+                    radius：半径；例如：20
+                    color：线的颜色；例如：(0,255,0)(绿色)
+                    thickness：线的粗细程度，例如：-1,1,2,3…
+                """
+        ret = {
+            'pts_x': pts_x,
+            'pts_y': pts_y,
+            'mask_image': background_image,
             'fit_params': fit_params,
             'source_image': source_image,
         }

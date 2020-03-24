@@ -107,7 +107,7 @@ def gen_train_sample(src_dir, b_gt_image_dir, i_gt_image_dir, image_dir):
     :return:
     """
 
-    with open('{:s}/training/train.txt'.format(src_dir), 'w') as file:
+    with open('{:s}/testing/test.txt'.format(src_dir), 'w') as file:
 
         for image_name in os.listdir(b_gt_image_dir):
             if not image_name.endswith('.png'):
@@ -139,32 +139,32 @@ def process_tusimple_dataset(src_dir):
     :param src_dir:
     :return:
     """
-    traing_folder_path = ops.join(src_dir, 'training')
+    # traing_folder_path = ops.join(src_dir, 'training')
     testing_folder_path = ops.join(src_dir, 'testing')
 
-    os.makedirs(traing_folder_path, exist_ok=True)
+    # os.makedirs(traing_folder_path, exist_ok=True)
     os.makedirs(testing_folder_path, exist_ok=True)
 
-    for json_label_path in glob.glob('{:s}/label*.json'.format(src_dir)):
-        json_label_name = ops.split(json_label_path)[1]
+    # for json_label_path in glob.glob('{:s}/label*.json'.format(src_dir)):
+      #   json_label_name = ops.split(json_label_path)[1]
 
-        shutil.copyfile(json_label_path, ops.join(traing_folder_path, json_label_name))
+        # shutil.copyfile(json_label_path, ops.join(traing_folder_path, json_label_name))
 
-    for json_label_path in glob.glob('{:s}/test*.json'.format(src_dir)):
+    for json_label_path in glob.glob('{:s}/test_label.json'.format(src_dir)):
         json_label_name = ops.split(json_label_path)[1]
 
         shutil.copyfile(json_label_path, ops.join(testing_folder_path, json_label_name))
 
-    gt_image_dir = ops.join(traing_folder_path, 'gt_image')
-    gt_binary_dir = ops.join(traing_folder_path, 'gt_binary_image')
-    gt_instance_dir = ops.join(traing_folder_path, 'gt_instance_image')
+    gt_image_dir = ops.join(testing_folder_path, 'gt_image')
+    gt_binary_dir = ops.join(testing_folder_path, 'gt_binary_image')
+    gt_instance_dir = ops.join(testing_folder_path, 'gt_instance_image')
 
     os.makedirs(gt_image_dir, exist_ok=True)
     os.makedirs(gt_binary_dir, exist_ok=True)
     os.makedirs(gt_instance_dir, exist_ok=True)
 
-    for json_label_path in glob.glob('{:s}/*.json'.format(traing_folder_path)):
-        process_json_file(json_label_path, src_dir, gt_image_dir, gt_binary_dir, gt_instance_dir)
+    for json_label_path in glob.glob('{:s}/*.json'.format(testing_folder_path)):
+         process_json_file(json_label_path, src_dir, gt_image_dir, gt_binary_dir, gt_instance_dir)
 
     gen_train_sample(src_dir, gt_binary_dir, gt_instance_dir, gt_image_dir)
 
@@ -172,6 +172,6 @@ def process_tusimple_dataset(src_dir):
 
 
 if __name__ == '__main__':
-    args = init_args()
+    # args = init_args()
 
-    process_tusimple_dataset(args.src_dir)
+    process_tusimple_dataset('/home/stevemaary/data')

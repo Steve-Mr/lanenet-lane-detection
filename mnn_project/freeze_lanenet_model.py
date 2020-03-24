@@ -136,6 +136,11 @@ def freeze_graph_test(pb_path, image_path):
 
             out = sess.run([output_binary, output_instance], feed_dict={input_tensor: [image]})
 
+            print("binary")
+            print(out[0][0].shape)
+            print("instance")
+            print(out[1][0].shape)
+
             postprocess_result = postprocessor.postprocess(
                 binary_seg_result=out[0][0],
                 instance_seg_result=out[1][0],

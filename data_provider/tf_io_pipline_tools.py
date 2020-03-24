@@ -132,7 +132,7 @@ def decode(serialized_example):
 
     # decode gt instance image
     gt_instance_image_shape = tf.stack([RESIZE_IMAGE_HEIGHT, RESIZE_IMAGE_WIDTH, 1])
-    gt_instance_image = tf.decode_raw(features['gt_instance_image_raw'], tf.uint8)
+    gt_instance_image = tf.decode_raw(features['gt_i+nstance_image_raw'], tf.uint8)
     gt_instance_image = tf.reshape(gt_instance_image, gt_instance_image_shape)
 
     return gt_image, gt_binary_image, gt_instance_image

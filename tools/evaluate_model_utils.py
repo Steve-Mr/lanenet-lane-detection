@@ -23,8 +23,10 @@ def calculate_model_precision(input_tensor, label_tensor):
     final_output = tf.expand_dims(tf.argmax(logits, axis=-1), axis=-1)
 
     idx = tf.where(tf.equal(final_output, 1))
+
     pix_cls_ret = tf.gather_nd(label_tensor, idx)           # 允许在多维上进行 gather 操作
     accuracy = tf.count_nonzero(pix_cls_ret)
+
     accuracy = tf.divide(
         accuracy,
         tf.cast(tf.shape(tf.gather_nd(label_tensor, tf.where(tf.equal(label_tensor, 1))))[0], tf.int64))
@@ -73,6 +75,77 @@ def calculate_model_fn(input_tensor, label_tensor):
     idx = tf.where(tf.equal(label_tensor, 1))
     pix_cls_ret = tf.gather_nd(final_output, idx)
     label_cls_ret = tf.gather_nd(label_tensor, tf.where(tf.equal(label_tensor, 1)))
+    mis_pred = tf.cast(tf.shape(label_cls_ret)[0], tf.int64) - tf.count_nonzero(pix_cls_ret)
+
+    """
+    Mpred the number of missed ground-truth lanes and Ngt the number of all ground-truth lanes.
+    Mpred / Ngt
+    """
+
+    return tf.divide(mis_pred, tf.cast(tf.shape(label_cls_ret)[0], tf.int64))
+
+
+def calculate_model_precision_for_test(input_tensor, label_tensor):
+    """
+    calculate accuracy acc = correct_nums / ground_truth_nums
+    :param input_tensor: binary segmentation logits
+    :param label_tensor: binary segmentation label
+    :return:
+    """
+    idx = tf.where(tf.not_equal(input_tensor, 0))
+
+    pix_cls_ret = tf.gather_nd(label_tensor, idx)           # 允许在多维上进行 gather 操作
+    accuracy = tf.count_nonzero(pix_cls_ret)
+
+    accuracy_result = tf.divide(
+        accuracy,
+        # tf.count_nonzero(label_tensor))
+        tf.cast(tf.shape(tf.gather_nd(label_tensor, tf.where(tf.not_equal(label_tensor, 0))))[0], tf.int64))
+
+    """
+    the average correct number of points per image (Cim/Sim)
+    with Cim the number of correct points and Sim the number of ground-truth points
+    """
+    return accuracy_result, accuracy, tf.count_nonzero(label_tensor)
+
+
+def calculate_model_fp_for_test(input_tensor, label_tensor):
+    """
+    calculate fp figure
+    :param input_tensor:
+    :param label_tensor:
+    :return:
+    """
+    logits = tf.nn.softmax(logits=input_tensor)
+    final_output = tf.expand_dims(tf.argmax(logits, axis=-1), axis=-1)
+
+    idx = tf.where(tf.equal(input_tensor, 1))
+    pix_cls_ret = tf.gather_nd(input_tensor, idx)
+    false_pred = tf.cast(tf.shape(pix_cls_ret)[0], tf.int64) - tf.count_nonzero(
+        tf.gather_nd(label_tensor, idx)
+    )
+
+    """
+    Fpred the number of wrongly predicted lanes, Npred the number of predicted lanes
+    Fpred / Npred
+    """
+
+    return tf.divide(false_pred, tf.cast(tf.shape(pix_cls_ret)[0], tf.int64))
+
+
+def calculate_model_fn_for_test(input_tensor, label_tensor):
+    """
+    calculate fn figure
+    :param input_tensor:
+    :param label_tensor:
+    :return:
+    """
+    logits = tf.nn.softmax(logits=input_tensor)
+    final_output = tf.expand_dims(tf.argmax(logits, axis=-1), axis=-1)
+
+    idx = tf.where(tf.equal(label_tensor, 255))
+    pix_cls_ret = tf.gather_nd(input_tensor, idx)
+    label_cls_ret = tf.gather_nd(label_tensor, tf.where(tf.equal(label_tensor, 255)))
     mis_pred = tf.cast(tf.shape(label_cls_ret)[0], tf.int64) - tf.count_nonzero(pix_cls_ret)
 
     """
