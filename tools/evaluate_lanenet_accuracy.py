@@ -76,7 +76,7 @@ def evaluate_lanenet_accuracy_ckpt(data_path, weights_path):
             image_path = ops.join(gt_image_path, image_path)
             print(image_path)
             image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-            image_vis = image
+            # image_vis = image
             image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
             image = image / 127.5 - 1.0  # 归一化 (只归一未改变维数)
 
@@ -84,19 +84,35 @@ def evaluate_lanenet_accuracy_ckpt(data_path, weights_path):
                 [binary_seg_ret, instance_seg_ret],
                 feed_dict={input_tensor: [image]}
             )
-            binary = binary_seg_image
-            # binary_seg_image = binary_seg_image.astype((np.float32))
-            # print(binary_seg_image.shape)
-            binary_seg_image = binary_seg_image.reshape(1, 256, 512, 1)
 
             image_name = ops.split(image_path)[1]
             gt_image = cv2.imread(ops.join(gt_binary_path, image_name), cv2.IMREAD_COLOR)
-            gt_image = cv2.resize(gt_image, (512, 256), interpolation=cv2.INTER_LINEAR)
 
-            gt_image = gt_image[:, :, 0].reshape(256, 512, 1)
+            image_vis = gt_image
 
-            binary_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 1], name='binary_tensor')
-            gt_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 1], name='gt_tensor')
+            postprocess_result = postprocessor.postprocess_for_test(
+                binary_seg_result=binary_seg_image[0],
+                instance_seg_result=instance_seg_image[0],
+                source_image=image_vis
+            )
+
+            plt.figure("result")
+            plt.imshow(postprocess_result['mask_image'])
+            plt.show()
+
+            # binary_seg_image = binary_seg_image.astype((np.float32))
+            # print(binary_seg_image.shape)
+
+            # binary_seg_image = binary_seg_image.reshape(1, 256, 512, 1)
+            # binary_seg_image = cv2.resize(postprocess_result['source_image'], (512, 256), interpolation=cv2.INTER_LINEAR)
+            binary_seg_image = postprocess_result['source_image'].reshape(1, 720, 1280, 1)
+
+            # gt_image = cv2.resize(gt_image, (512, 256), interpolation=cv2.INTER_LINEAR)
+
+            gt_image = gt_image[:, :, 0].reshape(720, 1280, 1)
+
+            binary_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 720, 1280, 1], name='binary_tensor')
+            gt_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 720, 1280, 1], name='gt_tensor')
 
             accuracy, count, idx = evaluate_model_utils.calculate_model_precision_for_test(
                 binary_tensor, gt_tensor

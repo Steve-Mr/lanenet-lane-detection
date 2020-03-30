@@ -143,11 +143,20 @@ def test_lanenet(image_path, weights_path):
         log.info('Single imgae inference cost time: {:.5f}s'.format(t_cost))
 
         print("postprocess_result = postprocessor.postprocess(")
+        """
         postprocess_result = postprocessor.postprocess(
             binary_seg_result=binary_seg_image[0],
             instance_seg_result=instance_seg_image[0],
             source_image=image_vis
         )
+
+        """
+        postprocess_result = postprocessor.postprocess_for_test(
+            binary_seg_result=binary_seg_image[0],
+            instance_seg_result=instance_seg_image[0],
+            source_image=image_vis
+        )
+
 
         print("mask_image = postprocess_result['mask_image']")
         mask_image = postprocess_result['mask_image']
@@ -161,19 +170,24 @@ def test_lanenet(image_path, weights_path):
             # 将bgr彩色矩阵归一化到0-255之间
         embedding_image = np.array(instance_seg_image[0], np.uint8)
 
-        for op in tf.get_default_graph().get_operations():
-            print(str(op.name))
+        # for op in tf.get_default_graph().get_operations():
+        #     print(str(op.name))
 
         #print([n.name for n in tf.get_default_graph().as_graph_def().node])
 
         plt.figure('mask_image')
-        plt.imshow(mask_image[:, :, (2, 1, 0)])
+        # plt.imshow(mask_image[:, :, (2, 1, 0)])
+        plt.imshow(mask_image)
         plt.figure('src_image')
         plt.imshow(image_vis[:, :, (2, 1, 0)])
         plt.figure('instance_image')
         plt.imshow(embedding_image[:, :, (2, 1, 0)])
         plt.figure('binary_image')
         plt.imshow(binary_seg_image[0] * 255, cmap='gray')
+        """"
+        plt.figure("result")
+        plt.imshow(postprocess_result['source_image'])
+        """
         plt.show()
 
         cv2.imwrite('instance_mask_image.png', mask_image)

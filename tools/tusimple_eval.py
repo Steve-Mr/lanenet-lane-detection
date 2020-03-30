@@ -26,11 +26,14 @@ class LaneEval(object):
         return np.sum(np.where(np.abs(pred - gt) < thresh, 1., 0.)) / len(gt)
 
     @staticmethod
-    def bench(pred, gt, y_samples, running_time):
+    def bench(pred, gt, y_samples):
+        for p in pred:
+            print("lenp:", len(p))
+            print(len(y_samples))
         if any(len(p) != len(y_samples) for p in pred):
             raise Exception('Format of lanes error.')
-        if running_time > 200 or len(gt) + 2 < len(pred):
-            return 0., 0., 1.
+        # if running_time > 200 or len(gt) + 2 < len(pred):
+        #     return 0., 0., 1.
         angles = [LaneEval.get_angle(np.array(x_gts), np.array(y_samples)) for x_gts in gt]
         threshs = [LaneEval.pixel_thresh / np.cos(angle) for angle in angles]
         line_accs = []
@@ -64,18 +67,18 @@ class LaneEval(object):
         gts = {l['raw_file']: l for l in json_gt}
         accuracy, fp, fn = 0., 0., 0.
         for pred in json_pred:
-            if 'raw_file' not in pred or 'lanes' not in pred or 'run_time' not in pred:
-                raise Exception('raw_file or lanes or run_time not in some predictions.')
+            if 'raw_file' not in pred or 'lanes' not in pred:
+                raise Exception('raw_file or lanes not in some predictions.')
             raw_file = pred['raw_file']
             pred_lanes = pred['lanes']
-            run_time = pred['run_time']
+            # run_time = pred['run_time']
             if raw_file not in gts:
                 raise Exception('Some raw_file from your predictions do not exist in the test tasks.')
             gt = gts[raw_file]
             gt_lanes = gt['lanes']
             y_samples = gt['h_samples']
             try:
-                a, p, n = LaneEval.bench(pred_lanes, gt_lanes, y_samples, run_time)
+                a, p, n = LaneEval.bench(pred_lanes, gt_lanes, y_samples)
             except BaseException as e:
                 raise Exception('Format of lanes error.')
             accuracy += a
@@ -93,9 +96,9 @@ class LaneEval(object):
 if __name__ == '__main__':
     import sys
     try:
-        if len(sys.argv) != 3:
-            raise Exception('Invalid input arguments')
-        print(LaneEval.bench_one_submit(sys.argv[1], sys.argv[2]))
+        # if len(sys.argv) != 3:
+        #    raise Exception('Invalid input arguments')
+        print(LaneEval.bench_one_submit("/home/stevemaary/data/pred/result.json", "/home/stevemaary/data/test_label.json"))
     except Exception as e:
         print(e.message)
         sys.exit(e.message)

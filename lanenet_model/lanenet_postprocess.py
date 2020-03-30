@@ -17,10 +17,12 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 from config import global_config
 
 CFG = global_config.cfg
+np.set_printoptions(threshold=np.inf)
 
 
 def _morphological_process(image, kernel_size=5):
@@ -333,6 +335,70 @@ class _LaneNetCluster(object):
 
         return mask, lane_coords
 
+    def apply_lane_feats_cluster_for_test(self, binary_seg_result, instance_seg_result):
+
+        """
+
+        :param binary_seg_result:
+        :param instance_seg_result:
+        :return:
+        """
+
+        get_lane_embedding_feats_result = self._get_lane_embedding_feats(
+            binary_seg_ret=binary_seg_result,
+            instance_seg_ret=instance_seg_result
+        )
+        # get embedding feats and coords
+        """
+        {   'lane_embedding_feats': lane_embedding_feats,
+            'lane_coordinates': lane_coordinate
+        }
+        """
+
+        # dbscan cluster
+        dbscan_cluster_result = self._embedding_feats_dbscan_cluster(
+            embedding_image_feats=get_lane_embedding_feats_result['lane_embedding_feats']
+        )
+        """
+        ret = {
+            'origin_features': features,
+            'cluster_nums': num_clusters,
+            'db_labels': db_labels,
+            'unique_labels': unique_labels,
+            'cluster_center': cluster_centers
+        }
+        """
+
+        mask = np.zeros(shape=[binary_seg_result.shape[0], binary_seg_result.shape[1], 3], dtype=np.uint8)
+        # 将 mask 初始化为空白矩阵（图）
+        """
+        用法：zeros(shape, dtype=float, order='C')
+        返回：返回来一个给定形状和类型的用0填充的数组；
+        参数：shape:形状
+              dtype:数据类型，可选参数，默认numpy.float64
+            """
+        db_labels = dbscan_cluster_result['db_labels']  # example: [-1 -1 -1 ...  2 -1 -1]
+        unique_labels = dbscan_cluster_result['unique_labels']  # example: [-1  0  1  2  3  4]
+        coord = get_lane_embedding_feats_result['lane_coordinates']
+
+        if db_labels is None:
+            return None, None
+
+        lane_coords = []
+
+        for index, label in enumerate(unique_labels.tolist()):
+            if label == -1:  # -1 为背景像素点
+                continue
+            idx = np.where(db_labels == label)
+            pix_coord_idx = tuple((coord[idx][:, 1], coord[idx][:, 0]))  # tuple 即元组 不可修改
+            # 获得所有属于该 label 的点坐标
+            # coord[idx]第1列全部，coord[idx]第0列全部
+            mask[pix_coord_idx] = 255  # self._color_map[index]
+            # 给线条上色
+            lane_coords.append(coord[idx])
+
+        return mask, lane_coords
+
 
 class LaneNetPostProcessor(object):
     """
@@ -579,11 +645,11 @@ class LaneNetPostProcessor(object):
         :param data_source:
         :return:
         """
-        background_image = np.zeros([720, 1280, 1], np.uint8)
-
         # convert binary_seg_result
         #
         binary_seg_result = np.array(binary_seg_result * 255, dtype=np.uint8)
+
+        # background_img = np.zeros(shape=(720, 1280), dtype=np.uint8)
 
         # 首先进行图像形态学运算 闭运算 先膨胀后腐蚀
         # apply image morphology operation to fill in the hold and reduce the small area
@@ -666,7 +732,7 @@ class LaneNetPostProcessor(object):
             fit_x = fit_param[0] * plot_y ** 2 + fit_param[1] * plot_y + fit_param[2]
 
             lane_pts = []
-            # lane points 车道线点坐标-
+            # lane points 车道线点坐标
             for index in range(0, plot_y.shape[0], 5):
                 src_x = self._remap_to_ipm_x[
                     int(plot_y[index]), int(np.clip(fit_x[index], 0, ipm_image_width - 1))]
@@ -685,21 +751,25 @@ class LaneNetPostProcessor(object):
 
         # tusimple test data sample point along y axis every 10 pixels
         source_image_width = source_image.shape[1]
-        pts_x = []
-        pts_y = []
+        lane = []
         for index, single_lane_pts in enumerate(src_lane_pts):
+            background_img = np.zeros(shape=(720, 1280), dtype=np.uint8)
+
             single_lane_pt_x = np.array(single_lane_pts, dtype=np.float32)[:, 0]
             single_lane_pt_y = np.array(single_lane_pts, dtype=np.float32)[:, 1]
             if data_source == 'tusimple':
-                start_plot_y = 160
-                end_plot_y = 710
+                start_plot_y = 240
+                end_plot_y = 720
             elif data_source == 'beec_ccd':
                 start_plot_y = 820
                 end_plot_y = 1350
             else:
                 raise ValueError('Wrong data source now only support tusimple and beec_ccd')
-            step = 10  # int(math.floor((end_plot_y - start_plot_y) / 10))
+            step = int(math.floor((end_plot_y - start_plot_y) / 10))
             # math.floor 下舍去整
+
+            src_pt_x = []
+            src_pt_y = []
 
             for plot_y in np.linspace(start_plot_y, end_plot_y, step):
                 diff = single_lane_pt_y - plot_y  # （推断）预测车道线点与 plot_y 纵向距离
@@ -731,27 +801,33 @@ class LaneNetPostProcessor(object):
                 # 确定遮罩层车道线像素点坐标
                 if interpolation_src_pt_x > source_image_width or interpolation_src_pt_x < 10:
                     continue
+                src_pt_x.append(interpolation_src_pt_x)
+                src_pt_y.append(interpolation_src_pt_y)
 
-                lane_color = self._color_map[index].tolist()
+            pred_lane_pts = np.vstack((src_pt_x, src_pt_y)).transpose()
+            pred_lane_pts = np.array([pred_lane_pts], np.int64)
 
-                cv2.circle(background_image, (int(interpolation_src_pt_x),
-                                              int(interpolation_src_pt_y)), 5, 255, -1)
-                pts_x.append(interpolation_src_pt_x)
-                pts_y.append(interpolation_src_pt_y)
-                """
-                circle(img, center, radius, color, thickness=None, lineType=None, shift=None)
-                    img：在img上绘图;
-                    center：圆心；例如：(0,0)
-                    radius：半径；例如：20
-                    color：线的颜色；例如：(0,255,0)(绿色)
-                    thickness：线的粗细程度，例如：-1,1,2,3…
-                """
+            lane_color = self._color_map[index].tolist()
+
+            cv2.polylines(source_image, pred_lane_pts, isClosed=False, color=lane_color, thickness=5)
+            cv2.polylines(background_img, pred_lane_pts, isClosed=False, color=255, thickness=5)
+
+            lane_pred = []
+            for plot_y_single_lane in np.arange(160, 720, 10):
+                if np.count_nonzero(background_img[plot_y_single_lane]) == 0:
+                    pred_dot_x = -2
+                    lane_pred.append(pred_dot_x)
+                    continue
+                idx = np.where(np.equal(background_img[plot_y_single_lane], 255))
+                pred_dot_x = (idx[0][0] + idx[0][-1])/2
+                lane_pred.append(int(round(pred_dot_x)))
+            lane.append(lane_pred)
+
         ret = {
-            'pts_x': pts_x,
-            'pts_y': pts_y,
-            'mask_image': background_image,
+            'mask_image': mask_image,
             'fit_params': fit_params,
             'source_image': source_image,
+            'lane_pts': lane
         }
 
         return ret

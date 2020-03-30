@@ -92,7 +92,12 @@ def calculate_model_precision_for_test(input_tensor, label_tensor):
     :param label_tensor: binary segmentation label
     :return:
     """
-    idx = tf.where(tf.not_equal(input_tensor, 0))
+    logits = tf.nn.softmax(logits=input_tensor)
+    final_output = tf.expand_dims(tf.argmax(logits, axis=-1), axis=-1)
+
+    idx = tf.where(tf.equal(final_output, 1))
+
+    # idx = tf.where(tf.not_equal(input_tensor, 0))
 
     pix_cls_ret = tf.gather_nd(label_tensor, idx)           # 允许在多维上进行 gather 操作
     accuracy = tf.count_nonzero(pix_cls_ret)
@@ -101,12 +106,13 @@ def calculate_model_precision_for_test(input_tensor, label_tensor):
         accuracy,
         # tf.count_nonzero(label_tensor))
         tf.cast(tf.shape(tf.gather_nd(label_tensor, tf.where(tf.not_equal(label_tensor, 0))))[0], tf.int64))
+        # tf.cast(tf.shape(tf.gather_nd(label_tensor, tf.where(tf.equal(label_tensor, 255))))[0], tf.int64))
 
     """
     the average correct number of points per image (Cim/Sim)
     with Cim the number of correct points and Sim the number of ground-truth points
     """
-    return accuracy_result, accuracy, tf.count_nonzero(label_tensor)
+    return accuracy_result, logits, tf.cast(tf.shape(tf.gather_nd(label_tensor, tf.where(tf.equal(label_tensor, 255))))[0], tf.int64)
 
 
 def calculate_model_fp_for_test(input_tensor, label_tensor):
@@ -119,7 +125,7 @@ def calculate_model_fp_for_test(input_tensor, label_tensor):
     logits = tf.nn.softmax(logits=input_tensor)
     final_output = tf.expand_dims(tf.argmax(logits, axis=-1), axis=-1)
 
-    idx = tf.where(tf.equal(input_tensor, 1))
+    idx = tf.where(tf.equal(input_tensor, 255))
     pix_cls_ret = tf.gather_nd(input_tensor, idx)
     false_pred = tf.cast(tf.shape(pix_cls_ret)[0], tf.int64) - tf.count_nonzero(
         tf.gather_nd(label_tensor, idx)
