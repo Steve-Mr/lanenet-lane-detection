@@ -810,7 +810,7 @@ class LaneNetPostProcessor(object):
             lane_color = self._color_map[index].tolist()
 
             cv2.polylines(source_image, pred_lane_pts, isClosed=False, color=lane_color, thickness=5)
-            cv2.polylines(background_img, pred_lane_pts, isClosed=False, color=255, thickness=5)
+            cv2.polylines(background_img, pred_lane_pts, isClosed=False, color=255, thickness=2)
 
             lane_pred = []
             for plot_y_single_lane in np.arange(160, 720, 10):

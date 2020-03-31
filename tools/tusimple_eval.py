@@ -27,9 +27,6 @@ class LaneEval(object):
 
     @staticmethod
     def bench(pred, gt, y_samples):
-        for p in pred:
-            print("lenp:", len(p))
-            print(len(y_samples))
         if any(len(p) != len(y_samples) for p in pred):
             raise Exception('Format of lanes error.')
         # if running_time > 200 or len(gt) + 2 < len(pred):
@@ -93,7 +90,70 @@ class LaneEval(object):
         ])
 
 
+def compare_pred_label (pred_json_path, label_json_path, dst_dir):
+    json_pred = [json.loads(line) for line in open(pred_json_path).readlines()]
+    json_label = [json.loads(line) for line in open(label_json_path).readlines()]
+
+    original_files = {line['raw_file']: line for line in json_label}
+
+    missed_all = []
+    missed_list_1 = []
+    missed_list_2 = []
+    missed_list_3 = []
+    missed_list_4 = []
+    missed_list_5 = []
+
+    for pred in json_pred:
+        raw_file = pred['raw_file']
+        pred_lanes = pred['lanes']
+        if raw_file not in original_files:
+            raise Exception('Some raw_file from your predictions do not exist in the test tasks.')
+        label = original_files[raw_file]
+        label_lanes = label['lanes']
+
+        result_file_name = pred['result_file'].split('/')[-1]
+
+        if len(pred_lanes)==0:
+            missed_all.append(raw_file)
+            continue
+
+        missed_lanes = np.abs((len(label_lanes)-len(pred_lanes)))
+        if missed_lanes == 1:
+            missed_list_1.append(raw_file)
+        elif missed_lanes  == 2:
+            missed_list_2.append(raw_file)
+        elif missed_lanes == 3:
+            missed_list_3.append(raw_file)
+        elif missed_lanes  == 4:
+            missed_list_4.append(raw_file)
+        elif missed_lanes > 4:
+            missed_list_5.append(raw_file)
+        continue
+
+    with open(dst_dir, 'w') as result:
+        data = {
+            'no_prediction': missed_all,
+            'missed_1': missed_list_1,
+            'missed_2': missed_list_2,
+            'missed_3': missed_list_3,
+            'missed_4': missed_list_4,
+            'more_than_4': missed_list_5,
+            'count':{
+                'no_prediction': len(missed_all),
+                'missed_1': len(missed_list_1),
+                'missed_2': len(missed_list_2),
+                'missed_3': len(missed_list_3),
+                'missed_4': len(missed_list_4),
+                'more_than_4': len(missed_list_5),
+            }
+        }
+        json.dump(data, result, indent=2)
+
+    return
+
+
 if __name__ == '__main__':
+    """
     import sys
     try:
         # if len(sys.argv) != 3:
@@ -102,3 +162,5 @@ if __name__ == '__main__':
     except Exception as e:
         print(e.message)
         sys.exit(e.message)
+    """
+    compare_pred_label("/home/stevemaary/data/pred/result.json", "/home/stevemaary/data/test_label.json", "/home/stevemaary/data/pred/missed_lanes.json")
