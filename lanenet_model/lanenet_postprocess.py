@@ -16,8 +16,6 @@ import glog as log
 import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
-import tensorflow as tf
 
 from config import global_config
 
@@ -202,6 +200,7 @@ class _LaneNetCluster(object):
             features = StandardScaler().fit_transform(embedding_image_feats)
             # fit_transform 不仅计算训练数据的均值和方差，
             # 还会基于计算出来的均值和方差来转换训练数据，从而把数据转换成标准的正太分布
+
             db.fit(features)
             """
             Perform DBSCAN clustering from features or distance matrix.
@@ -664,11 +663,8 @@ class LaneNetPostProcessor(object):
         """
         Get the results
         The first cell is the number of labels 
-        The second cell is the label matrix
-            (Labels is a matrix the size of the input image where each element has a value equal to its label).
-        The third cell is the stat matrix 
-            (Stats is a matrix of the stats that the function calculates. It has a length equal to the number of labels 
-             and a width equal to the number of stats.)
+        标签是输入图像大小的矩阵,其中每个元素的值等于其标签.
+        统计数据是函数计算的统计数据的矩阵.它的长度等于标签数量,宽度等于统计数量.它可以与OpenCV文档一起使用:
             Statistics output for each label, including the background label, see below for available statistics. 
             Statistics are accessed via stats[label, COLUMN] where available columns are defined below.
                 cv2.CC_STAT_LEFT The leftmost (x) coordinate which is the inclusive start of the bounding box in the horizontal direction.

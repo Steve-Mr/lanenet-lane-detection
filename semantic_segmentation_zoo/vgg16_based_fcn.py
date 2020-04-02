@@ -486,7 +486,6 @@ if __name__ == '__main__':
     # 使用转置卷积做上采样
     model._vgg16_fcn_decode(name='vgg16_decode_module')
     decode_binary = model._net_intermediate_results['binary_segment_logits']['data']
-    print("binary_seg_logits: ", decode_binary.shape)
     decode_instance = model._net_intermediate_results['instance_segment_logits']['data']
     enbinary = model._net_intermediate_results['encode_stage_5_binary']['data']
     eninstance = model._net_intermediate_results['encode_stage_5_instance']['data']
