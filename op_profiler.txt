@@ -1,0 +1,16 @@
+
+Doc:
+op: The nodes are operation kernel type, such as MatMul, Conv2D. Graph nodes belonging to the same type are aggregated together.
+total execution time: Sum of accelerator execution time and cpu execution time.
+cpu execution time: The time from the start to the end of the operation. It's the sum of actual cpu run time plus the time that it spends waiting if part of computation is launched asynchronously.
+accelerator execution time: Time spent executing on the accelerator. This is normally measured by the actual hardware library.
+occurrence: The number of times it occurs
+
+Profile:
+node name | total execution time | accelerator execution time | cpu execution time | op occurrence (run|defined)
+Conv2DBackpropInput          482.87ms (100.00%, 45.94%),     480.91ms (100.00%, 46.15%),       1.97ms (100.00%, 21.77%),        8|8
+Conv2D                        383.68ms (54.06%, 36.50%),      381.18ms (53.85%, 36.58%),        2.50ms (78.23%, 27.68%),      18|18
+FusedBatchNormV3              107.31ms (17.56%, 10.21%),      105.57ms (17.27%, 10.13%),        1.74ms (50.55%, 19.27%),      32|32
+Add                              42.55ms (7.35%, 4.05%),         42.18ms (7.14%, 4.05%),          371us (31.28%, 4.11%),       8|34
+MaxPool                          16.75ms (3.30%, 1.59%),         16.53ms (3.09%, 1.59%),          222us (27.17%, 2.46%),        4|4
+Softmax                           6.52ms (1.71%, 0.62%),          6.42ms (1.51%, 0.62%),           98us (24.71%, 1.09%),        1|1
