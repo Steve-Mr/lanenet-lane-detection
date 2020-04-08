@@ -87,11 +87,11 @@ class LaneEval(object):
             fn += n
         num = len(gts)
         # the first return parameter is the default ranking parameter
-        return json.dumps([
+        return json.dump([
             {'name': 'Accuracy', 'value': accuracy / num, 'order': 'desc'},
             {'name': 'FP', 'value': fp / num, 'order': 'asc'},
             {'name': 'FN', 'value': fn / num, 'order': 'asc'}
-        ])
+        ],open('/home/stevemaary/data/pred/accuracy_result.json','w'))
 
 
 def compare_pred_label (pred_json_path, label_json_path, dst_dir):
@@ -106,6 +106,7 @@ def compare_pred_label (pred_json_path, label_json_path, dst_dir):
     missed_list_3 = []
     missed_list_4 = []
     missed_list_5 = []
+    more_list = []
 
     for pred in json_pred:
         raw_file = pred['raw_file']
@@ -121,7 +122,7 @@ def compare_pred_label (pred_json_path, label_json_path, dst_dir):
             missed_all.append(result_file_name)
             continue
 
-        missed_lanes = np.abs((len(label_lanes)-len(pred_lanes)))
+        missed_lanes = (len(label_lanes)-len(pred_lanes))
         if missed_lanes == 1:
             missed_list_1.append(result_file_name)
         elif missed_lanes  == 2:
@@ -132,6 +133,8 @@ def compare_pred_label (pred_json_path, label_json_path, dst_dir):
             missed_list_4.append(result_file_name)
         elif missed_lanes > 4:
             missed_list_5.append(result_file_name)
+        elif missed_lanes < 0:
+            more_list.append(result_file_name)
         continue
 
     with open(dst_dir, 'w') as result:
@@ -142,6 +145,7 @@ def compare_pred_label (pred_json_path, label_json_path, dst_dir):
             'missed_3': missed_list_3,
             'missed_4': missed_list_4,
             'more_than_4': missed_list_5,
+            'more':more_list,
             'count':{
                 'no_prediction': len(missed_all),
                 'missed_1': len(missed_list_1),
@@ -149,9 +153,10 @@ def compare_pred_label (pred_json_path, label_json_path, dst_dir):
                 'missed_3': len(missed_list_3),
                 'missed_4': len(missed_list_4),
                 'more_than_4': len(missed_list_5),
+                'more': len(more_list)
             }
         }
-        json.dump(data, result) # , indent=2)
+        json.dump(data, result, indent=2)
 
     return
 
@@ -163,6 +168,7 @@ def copy_missed_results(src_dir, dst_dir):
     missed_3_path = ops.join(dst_dir, "missed_3")
     missed_4_path = ops.join(dst_dir, "missed_4")
     missed_more_path = ops.join(dst_dir, "missed_more")
+    pred_more_path = ops.join(dst_dir,"pred_more")
 
     with open(src_dir) as file:
         for line in file:
@@ -173,6 +179,7 @@ def copy_missed_results(src_dir, dst_dir):
             missed_3_list = info['missed_3']
             missed_4_list = info['missed_4']
             missed_5_list = info['more_than_4']
+            more_list = info['more']
 
             for path in missed_all_list:
                 shutil.copyfile(path, ops.join(missed_all_path, path.split('/')[-1]))
@@ -186,6 +193,8 @@ def copy_missed_results(src_dir, dst_dir):
                 shutil.copyfile(path, ops.join(missed_4_path, path.split('/')[-1]))
             for path in missed_5_list:
                 shutil.copyfile(path, ops.join(missed_more_path, path.split('/')[-1]))
+            for path in more_list:
+                shutil.copyfile(path,ops.join(pred_more_path,path.split('/')[-1]))
 
     return
 
@@ -201,5 +210,5 @@ if __name__ == '__main__':
         print(e.message)
         sys.exit(e.message)
     """
-    # compare_pred_label("/home/stevemaary/data/pred/result.json", "/home/stevemaary/data/test_label.json", "/home/stevemaary/data/pred/missed_lanes.json")
-    copy_missed_results("/home/stevemaary/data/pred/missed_lanes.json", "/home/stevemaary/data/pred/missed/")
+    compare_pred_label("/home/stevemaary/data/pred/result.json", "/home/stevemaary/data/test_label.json", "/home/stevemaary/data/pred/missed_lanes.json")
+    # copy_missed_results("/home/stevemaary/data/pred/missed_lanes.json", "/home/stevemaary/data/pred/missed/")

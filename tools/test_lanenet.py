@@ -352,4 +352,5 @@ if __name__ == '__main__':
     # init args
     args = init_args()
 
-    test_lanenet_for_eval(args.image_path, args.weights_path)
+    test_lanenet(args.image_path, args.weights_path)
+    # test_lanenet_for_eval(args.image_path, args.weights_path)

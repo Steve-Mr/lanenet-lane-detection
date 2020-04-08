@@ -17,6 +17,9 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 
+import matplotlib.pyplot as plt
+
+
 from config import global_config
 
 CFG = global_config.cfg
@@ -54,8 +57,9 @@ def _morphological_process(image, kernel_size=5):
     """
     cv2.MORPH_CLOSE: 闭运算：先膨胀后腐蚀（先膨胀会使白色的部分扩张，以至于消除“闭合”物体里面的小黑洞）
     """
+    # opening = cv2.dilate(closing,kernel,iterations=1)
 
-    return closing
+    return closing  # opening
 
 
 def _connect_components_analysis(image):
@@ -192,6 +196,7 @@ class _LaneNetCluster(object):
         :return:
         """
         db = DBSCAN(eps=CFG.POSTPROCESS.DBSCAN_EPS, min_samples=CFG.POSTPROCESS.DBSCAN_MIN_SAMPLES)
+        # db = DBSCAN(eps=0.45, min_samples=500)  # CFG.POSTPROCESS.DBSCAN_MIN_SAMPLES)
         """
         eps: 扫描半径 (0.35)
         min_samples：作为核心点其邻域中的最小样本数（包括点本身）(1000)
@@ -222,6 +227,38 @@ class _LaneNetCluster(object):
         num_clusters = len(unique_labels)
         cluster_centers = db.components_
 
+        if num_clusters <= 1:
+            db = DBSCAN(eps=0.45, min_samples=500)  # CFG.POSTPROCESS.DBSCAN_MIN_SAMPLES)
+            """
+            eps: 扫描半径
+            min_samples：作为核心点其邻域中的最小样本数（包括点本身）
+            """
+            try:
+                features = StandardScaler().fit_transform(embedding_image_feats)
+                # fit_transform 不仅计算训练数据的均值和方差，
+                # 还会基于计算出来的均值和方差来转换训练数据，从而把数据转换成标准的正太分布
+
+                db.fit(features)
+                """
+                Perform DBSCAN clustering from features or distance matrix.
+                """
+            except Exception as err:
+                log.error(err)
+                ret = {
+                    'origin_features': None,
+                    'cluster_nums': 0,
+                    'db_labels': None,
+                    'unique_labels': None,
+                    'cluster_center': None
+                }
+                return ret
+            db_labels = db.labels_
+            # 标记所有像素点
+            unique_labels = np.unique(db_labels)
+
+            num_clusters = len(unique_labels)
+            cluster_centers = db.components_
+
         ret = {
             'origin_features': features,
             'cluster_nums': num_clusters,
@@ -246,6 +283,7 @@ class _LaneNetCluster(object):
         idx = np.where(binary_seg_ret == 255)
         # 只有一个参数，输出满足条件的元素**坐标**
         lane_embedding_feats = instance_seg_ret[idx]
+
         lane_coordinate = np.vstack((idx[1], idx[0])).transpose()
         """
         vstack() 沿着竖直方向将矩阵堆叠起来。
@@ -499,6 +537,9 @@ class LaneNetPostProcessor(object):
             if stat[4] <= min_area_threshold:
                 idx = np.where(labels == index)
                 morphological_ret[idx] = 0
+
+        plt.figure("moro")
+        plt.imshow(morphological_ret)
 
         # apply embedding features cluster
         mask_image, lane_coords = self._cluster.apply_lane_feats_cluster(
