@@ -6,6 +6,8 @@ import ujson as json
 import os.path as ops
 import os
 
+from tools.generate_prediction_results import generate_prediction_result
+
 
 class LaneEval(object):
     lr = LinearRegression()
@@ -94,7 +96,7 @@ class LaneEval(object):
         ],open('/home/stevemaary/data/pred/accuracy_result.json','w'))
 
 
-def compare_pred_label (pred_json_path, label_json_path, dst_dir):
+def compare_pred_label (pred_json_path, label_json_path, dst_dir, readable):
     json_pred = [json.loads(line) for line in open(pred_json_path).readlines()]
     json_label = [json.loads(line) for line in open(label_json_path).readlines()]
 
@@ -156,7 +158,10 @@ def compare_pred_label (pred_json_path, label_json_path, dst_dir):
                 'more': len(more_list)
             }
         }
-        json.dump(data, result, indent=2)
+        if readable:
+            json.dump(data, result, indent=2)
+        else:
+            json.dump(data,result)
 
     return
 
@@ -200,7 +205,10 @@ def copy_missed_results(src_dir, dst_dir):
 
 
 if __name__ == '__main__':
-    """
+
+    generate_prediction_result('/home/stevemaary/data/', '/home/stevemaary/data/pred',
+                               './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
+
     import sys
     try:
         # if len(sys.argv) != 3:
@@ -209,6 +217,7 @@ if __name__ == '__main__':
     except Exception as e:
         print(e.message)
         sys.exit(e.message)
-    """
-    compare_pred_label("/home/stevemaary/data/pred/result.json", "/home/stevemaary/data/test_label.json", "/home/stevemaary/data/pred/missed_lanes.json")
-    # copy_missed_results("/home/stevemaary/data/pred/missed_lanes.json", "/home/stevemaary/data/pred/missed/")
+
+    compare_pred_label("/home/stevemaary/data/pred/result.json", "/home/stevemaary/data/test_label.json", "/home/stevemaary/data/pred/missed_lanes.json", False)
+    copy_missed_results("/home/stevemaary/data/pred/missed_lanes.json", "/home/stevemaary/data/pred/missed/")
+    compare_pred_label("/home/stevemaary/data/pred/result.json", "/home/stevemaary/data/test_label.json", "/home/stevemaary/data/pred/missed_lanes.json", True)
