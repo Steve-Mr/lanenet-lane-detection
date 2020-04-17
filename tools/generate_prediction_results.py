@@ -27,7 +27,8 @@ def generate_prediction_result(src_dir, dst_dir, weights_path):
     net = lanenet.LaneNet(phase='test', net_flag='vgg')
     binary_seg_ret, instance_seg_ret = net.inference(input_tensor=input_tensor, name='lanenet_model')
 
-    postprocessor = lanenet_postprocess.LaneNetPostProcessor()
+    # postprocessor = lanenet_postprocess.LaneNetPostProcessor()
+    postprocessor = lanenet_postprocess.LaneNetPostProcessor_for_nontusimple()
 
     saver = tf.train.Saver()
 
@@ -73,7 +74,7 @@ def generate_prediction_result(src_dir, dst_dir, weights_path):
                     feed_dict={input_tensor: [image]}
                 )
 
-                postprocess_result = postprocessor.postprocess_for_test(
+                postprocess_result = postprocessor.postprocess_for_non_tusimple(
                     binary_seg_result=binary_seg_image[0],
                     instance_seg_result=instance_seg_image[0],
                     source_image=image_vis
@@ -97,4 +98,4 @@ def generate_prediction_result(src_dir, dst_dir, weights_path):
 
 if __name__ == '__main__':
 
-    generate_prediction_result('/home/stevemaary/data/', '/home/stevemaary/data/pred', './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
+    generate_prediction_result('/media/stevemaary/68A0799BA0797104/Users/a1975/Documents/lanenet_related_files/', '/home/stevemaary/data/pred', './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')

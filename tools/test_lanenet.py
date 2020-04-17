@@ -108,7 +108,8 @@ def test_lanenet(image_path, weights_path):
 
     binary_seg_ret, instance_seg_ret = net.inference(input_tensor=input_tensor, name='lanenet_model')
 
-    postprocessor = lanenet_postprocess.LaneNetPostProcessor()
+    # postprocessor = lanenet_postprocess.LaneNetPostProcessor()
+    postprocessor = lanenet_postprocess.LaneNetPostProcessor_for_nontusimple()
 
     saver = tf.train.Saver()
     # 加载预训练模型参数
@@ -137,12 +138,12 @@ def test_lanenet(image_path, weights_path):
         t_cost = time.time() - t_start
         log.info('Single imgae inference cost time: {:.5f}s'.format(t_cost))
 
-
+        """
         postprocess_result = postprocessor.postprocess(
             binary_seg_result=binary_seg_image[0],
             instance_seg_result=instance_seg_image[0],
             source_image=image_vis
-        )
+        )"""
 
         """
         postprocess_result = postprocessor.postprocess_for_test(
@@ -151,6 +152,11 @@ def test_lanenet(image_path, weights_path):
             source_image=image_vis
         )"""
 
+        postprocess_result = postprocessor.postprocess_for_non_tusimple(
+            binary_seg_result=binary_seg_image[0],
+            instance_seg_result=instance_seg_image[0],
+            source_image=image_vis
+        )
 
         mask_image = postprocess_result['mask_image']
 

@@ -206,7 +206,7 @@ def copy_missed_results(src_dir, dst_dir):
 
 if __name__ == '__main__':
 
-    generate_prediction_result('/home/stevemaary/data/', '/home/stevemaary/data/pred',
+    generate_prediction_result('/media/stevemaary/68A0799BA0797104/Users/a1975/Documents/lanenet_related_files/', '/home/stevemaary/data/pred',
                                './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
 
     import sys
