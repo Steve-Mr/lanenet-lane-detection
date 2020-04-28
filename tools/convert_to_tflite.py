@@ -6,15 +6,15 @@ import numpy as np
 from lanenet_model import lanenet_postprocess
 
 
-
 def convert_from_frozen_graph():
     output_node_names = [
         'lanenet/final_binary_output',
         'lanenet/final_pixel_embedding_output'
     ]
-    convert =tf.compat.v1.lite.TFLiteConverter.from_frozen_graph("./mnn_project/lanenet.pb", ["lanenet/input_tensor"],
-                                                        output_node_names,
-                                                        input_shapes={"lanenet/input_tensor": [1, 256, 512, 3]})
+    convert = tf.compat.v1.lite.TFLiteConverter.from_frozen_graph("./mnn_project/lanenet.pb", ["lanenet/input_tensor"],
+                                                                  output_node_names,
+                                                                  input_shapes={
+                                                                      "lanenet/input_tensor": [1, 256, 512, 3]})
     # convert.post_training_quantize = True
     tflite_model = convert.convert()
     open("./mnn_project/quantized_model.tflite", "wb").write(tflite_model)
@@ -69,8 +69,7 @@ def tflite_model_test(model_path, image_path):
 
 
 if __name__ == '__main__':
-
     convert_from_frozen_graph()
-    image_path = "./data/tusimple_test_image/2.jpg"
-    model_path = "./mnn_project/quantized_model.tflite"
-    tflite_model_test(model_path, image_path)
+    # image_path = "./data/tusimple_test_image/2.jpg"
+    # model_path = "./mnn_project/quantized_model.tflite"
+    # tflite_model_test(model_path, image_path)

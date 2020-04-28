@@ -351,6 +351,104 @@ def test_lanenet_for_eval(image_path, weights_path):
     return
 
 
+def test_lanenet_nontusimple(image_path, weights_path):
+    """
+
+    :param image_path: 测试图片地址
+    :param weights_path: 训练模型地址
+    :return:
+    """
+    assert ops.exists(image_path), '{:s} not exist'.format(image_path)
+
+    log.info('Start reading image and preprocessing')
+    t_start = time.time()
+    image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    image_vis = image
+    # image_vis = cv2.imread('/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/cordova1/label/f00028.png', cv2.IMREAD_COLOR)
+
+    # image = image[:420, 40:600]
+
+    image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
+
+    image = image / 127.5 - 1.0  # 归一化 (只归一未改变维数)
+    log.info('Image load complete, cost time: {:.5f}s'.format(time.time() - t_start))
+
+    input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
+    net = lanenet.LaneNet(phase='test', net_flag='vgg')
+    binary_seg_ret, instance_seg_ret = net.inference(input_tensor=input_tensor, name='lanenet_model')
+    postprocessor = lanenet_postprocess.LaneNetPostProcessor_for_nontusimple()
+
+    saver = tf.train.Saver()
+    sess_config = tf.ConfigProto()
+    sess_config.gpu_options.per_process_gpu_memory_fraction = CFG.TEST.GPU_MEMORY_FRACTION
+    sess_config.gpu_options.allow_growth = CFG.TRAIN.TF_ALLOW_GROWTH
+    sess_config.gpu_options.allocator_type = 'BFC'  # best fit with coalescing  内存管理算法
+    sess = tf.Session(config=sess_config)
+
+    with sess.as_default():
+        saver.restore(sess=sess, save_path=weights_path)
+
+        t_start = time.time()
+
+        binary_seg_image, instance_seg_image = sess.run(
+            [binary_seg_ret, instance_seg_ret],
+            feed_dict={input_tensor: [image]}
+        )
+        t_cost = time.time() - t_start
+        log.info('Single imgae inference cost time: {:.5f}s'.format(t_cost))
+
+        postprocess_result = postprocessor.postprocess_for_non_tusimple(
+            binary_seg_result=binary_seg_image[0],
+            instance_seg_result=instance_seg_image[0],
+            source_image=image_vis,
+            data_source='jiqing'
+        )
+
+        mask_image = postprocess_result['mask_image']
+
+        for i in range(CFG.TRAIN.EMBEDDING_FEATS_DIMS):
+            # __C.TRAIN.EMBEDDING_FEATS_DIMS = 4
+            instance_seg_image[0][:, :, i] = minmax_scale(instance_seg_image[0][:, :, i])
+            # 与 instance_seg_image[0][:, :, i] =
+            # cv2.normalize(instance_seg_image[0][:, :, i], None, 0, 255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC3)
+            # 功能相同
+            # 将bgr彩色矩阵归一化到0-255之间
+        embedding_image = np.array(instance_seg_image[0], np.uint8)
+
+        plt.figure('mask_image')
+        # mask_image = cv2.resize(mask_image, (640, 480), interpolation= cv2.INTER_LINEAR)
+        plt.imshow(mask_image[:, :, (2, 1, 0)])
+        plt.imshow(mask_image)
+        plt.figure('src_image')
+        plt.imshow(image_vis[:, :, (2, 1, 0)])
+        plt.figure('instance_image')
+        plt.imshow(embedding_image[:, :, (2, 1, 0)])
+        # plt.imshow(instance_seg_ret[:, :, 0])
+        """
+        back = np.zeros(shape=(256, 512), dtype= np.uint8)
+        idx = np.where(embedding_image[:, :, 0] == 255)
+        lane_coord = np.vstack((idx[1], idx[0])).transpose()
+        for coord in lane_coord:
+            cv2.circle(back, (coord[0], coord[1]), 5, 255, -1)
+        plt.figure("test")
+        plt.imshow(back)
+        """
+        # print(embedding_image[:, :, 0])
+        plt.figure('binary_image')
+        plt.imshow(binary_seg_image[0] * 255, cmap='gray')
+        plt.figure("cropped")
+        plt.imshow(image)
+        plt.show()
+
+        cv2.imwrite('instance_mask_image.png', mask_image)
+        cv2.imwrite('source_image.png', postprocess_result['source_image'])
+        cv2.imwrite('binary_mask_image.png', binary_seg_image[0] * 255)
+
+    sess.close()
+
+    return
+
+
 if __name__ == '__main__':
     """
     test code
@@ -358,5 +456,6 @@ if __name__ == '__main__':
     # init args
     args = init_args()
 
-    test_lanenet(args.image_path, args.weights_path)
+    # test_lanenet(args.image_path, args.weights_path)
     # test_lanenet_for_eval(args.image_path, args.weights_path)
+    test_lanenet_nontusimple(args.image_path, args.weights_path)

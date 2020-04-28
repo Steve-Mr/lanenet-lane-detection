@@ -185,16 +185,17 @@ if __name__ == '__main__':
     """
     test code
     """
-    """
+
     args = init_args()
 
     convert_ckpt_into_pb_file(
         ckpt_file_path=args.weights_path,
         pb_file_path=args.save_path
      )
-    """
 
+    """
     image_path = "./data/tusimple_test_image/0.jpg"
     pb_path = "./mnn_project/lanenet.pb"
     printTensors(pb_path)
     freeze_graph_test(pb_path, image_path)
+    """

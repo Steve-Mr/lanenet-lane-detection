@@ -58,7 +58,7 @@ def _morphological_process(image, kernel_size=5):
     """
     # opening = cv2.dilate(closing,kernel,iterations=1)
 
-    return closing
+    return closing   # opening
 
 
 def _connect_components_analysis(image):
@@ -187,7 +187,7 @@ class _LaneNetCluster(object):
                            np.array([100, 50, 100])]
 
     @staticmethod
-    def _embedding_feats_dbscan_cluster(embedding_image_feats, eps = 0.50, min_samples = 700):# 0.50 700
+    def _embedding_feats_dbscan_cluster(embedding_image_feats, eps = 0.35, min_samples = 200):# 0.50 700
 
         """
         dbscan cluster
@@ -196,6 +196,7 @@ class _LaneNetCluster(object):
         """
         # db = DBSCAN(eps=CFG.POSTPROCESS.DBSCAN_EPS, min_samples=CFG.POSTPROCESS.DBSCAN_MIN_SAMPLES)
         db = DBSCAN(eps=eps, min_samples=min_samples)  # CFG.POSTPROCESS.DBSCAN_MIN_SAMPLES)
+
         """
         eps: 扫描半径 (0.35)
         min_samples：作为核心点其邻域中的最小样本数（包括点本身）(1000)
@@ -209,6 +210,7 @@ class _LaneNetCluster(object):
             """
             Perform DBSCAN clustering from features or distance matrix.
             """
+
         except Exception as err:
             log.error(err)
             ret = {
@@ -264,6 +266,12 @@ class _LaneNetCluster(object):
                              [503 255]
                              [504 255]] 形式。
         """
+        # only for test
+        tmp = np.zeros(shape=(1080, 1920), dtype=np.uint8)
+        for coord in lane_coordinate:
+            cv2.circle(tmp, (coord[0], coord[1]), 5, 255, -1)
+        # plt.figure("feat")
+        # plt.imshow(tmp)
 
         assert lane_embedding_feats.shape[0] == lane_coordinate.shape[0]
 
@@ -277,16 +285,19 @@ class _LaneNetCluster(object):
     def apply_lane_feats_cluster(self, binary_seg_result, instance_seg_result):
 
         """
-
         :param binary_seg_result:
         :param instance_seg_result:
         :return:
         """
 
+        # t_start = time.time()
+
         get_lane_embedding_feats_result = self._get_lane_embedding_feats(
             binary_seg_ret=binary_seg_result,
             instance_seg_ret=instance_seg_result
         )
+
+        # t_feat = time.time() - t_start
         # get embedding feats and coords
         """
         {   'lane_embedding_feats': lane_embedding_feats,
@@ -313,6 +324,8 @@ class _LaneNetCluster(object):
             'cluster_center': cluster_centers
         }
         """
+
+        # t_dbscan = time.time() - t_start
 
         mask = np.zeros(shape=[binary_seg_result.shape[0], binary_seg_result.shape[1], 3], dtype=np.uint8)
         # 将 mask 初始化为空白矩阵（图）
@@ -341,7 +354,8 @@ class _LaneNetCluster(object):
             mask[pix_coord_idx] = self._color_map[index]
             # 给线条上色
             lane_coords.append(coord[idx])
-
+        # t_end = time.time() - t_start
+        # print("cluster ", t_feat, t_dbscan, t_end)
         return mask, lane_coords
 
     def apply_lane_feats_cluster_for_test(self, binary_seg_result, instance_seg_result):
@@ -875,6 +889,9 @@ class LaneNetPostProcessor_for_nontusimple(object):
         :param data_source:
         :return:
         """
+
+        # t_start = time.time()
+
         # convert binary_seg_result
         #
         binary_seg_result = np.array(binary_seg_result * 255, dtype=np.uint8)
@@ -908,11 +925,26 @@ class LaneNetPostProcessor_for_nontusimple(object):
                 idx = np.where(labels == index)
                 morphological_ret[idx] = 0
 
+        # t_pre = time.time() - t_start
+
+        if data_source == "jiqing":
+            morphological_ret = morphological_ret[:215]
+            instance_seg_result= instance_seg_result[:215]
+            # morphological_ret = cv2.resize(morphological_ret, (1024, 256), interpolation=cv2.INTER_LINEAR)
+            # instance_seg_result = cv2.resize(instance_seg_result, (1024, 256), interpolation=cv2.INTER_LINEAR)
+        # if data_source == 'caltech':
+          #   morphological_ret = morphological_ret[:][:182]
+            # instance_seg_result = instance_seg_result[:][:182]
+
+        # t_resize = time.time() - t_start
+
         # apply embedding features cluster
         mask_image, lane_coords = self._cluster.apply_lane_feats_cluster(
             binary_seg_result=morphological_ret,
             instance_seg_result=instance_seg_result
         )
+
+        # t_clu = time.time() - t_start
 
         if mask_image is None:
             return {
@@ -921,7 +953,7 @@ class LaneNetPostProcessor_for_nontusimple(object):
                 'source_image': None,
             }
 
-        mask_image = cv2.resize(mask_image, (1280, 720), interpolation=cv2.INTER_LINEAR)
+        # t_dbscan = time.time() - t_start
 
         """
         lane line fit
@@ -933,29 +965,39 @@ class LaneNetPostProcessor_for_nontusimple(object):
                 tmp_mask = np.zeros(shape=(720, 1280), dtype=np.uint8)
                 tmp_mask[tuple((np.int_(coords[:, 1] * 720 / 256), np.int_(coords[:, 0] * 1280 / 512)))] = 255
                 # 新建空白 tmp_mask 并根据 mask_image 已有坐标进行变换后改变对应坐标的值
-            elif data_source == 'beec_ccd':
-                tmp_mask = np.zeros(shape=(1350, 2448), dtype=np.uint8)
-                tmp_mask[tuple((np.int_(coords[:, 1] * 1350 / 256), np.int_(coords[:, 0] * 2448 / 512)))] = 255
+            elif data_source == 'jiqing':
+                tmp_mask = np.zeros(shape=(1080, 1920), dtype=np.uint8)
+                tmp_mask[tuple((np.int_(coords[:, 1] * 1080 / 256), np.int_(coords[:, 0] * 1920 / 512)))] = 255
+            elif data_source == 'caltech':
+                tmp_mask = np.zeros(shape=(480, 640), dtype=np.uint8)
+                # tmp_mask[tuple((np.int_(coords[:, 1] * 480 / 256), np.int_(coords[:, 0] * 640 / 512)))] = 255
+                tmp_mask[tuple((np.int_(coords[:, 1] * 420 / 256 +10), np.int_(coords[:, 0] * 560 / 512 + 40)))] = 255
+                """
+                plt.figure("tmp")
+                plt.imshow(tmp_mask)
+                plt.show()
+                """
             else:
                 raise ValueError('Wrong data source now only support tusimple and beec_ccd')
 
             nonzero_y = np.array(tmp_mask.nonzero()[0])
             nonzero_x = np.array(tmp_mask.nonzero()[1])
 
-            fit_param = np.polyfit(nonzero_y, nonzero_x, 3)
-            # 进行拟合，目标函数为二次函数
+            fit_param = np.polyfit(nonzero_y, nonzero_x, 2)
             fit_params.append(fit_param)
 
             [ipm_image_height, ipm_image_width] = tmp_mask.shape
             plot_y = np.linspace(10, tmp_mask.nonzero()[0][-1], tmp_mask.nonzero()[0][-1] - 10)
+            # plot_y = np.linspace(10, ipm_image_height, ipm_image_height - 10)
 
             # linspace(start, stop, num) 生成从 start 到 stop num 个数的等差数列
-            fit_x = fit_param[0] * plot_y ** 3 + fit_param[1] * plot_y ** 2 + fit_param[2] * plot_y + fit_param[3]
+            # fit_x = fit_param[0] * plot_y ** 3 + fit_param[1] * plot_y ** 2 + fit_param[2] * plot_y + fit_param[3]
+            fit_x = fit_param[0] * plot_y ** 2 + fit_param[1] * plot_y + fit_param[2]
 
             lane_pts = []
             # lane points 车道线点坐标
             for index in range(0, plot_y.shape[0], 5):
-                if fit_x[index] <= 0 or fit_x[index] >= 1280:
+                if fit_x[index] <= 0 or fit_x[index] >= ipm_image_width:
                     continue
                 src_x = int(fit_x[index])
                 src_y = int(plot_y[index])
@@ -964,20 +1006,41 @@ class LaneNetPostProcessor_for_nontusimple(object):
 
             src_lane_pts.append(lane_pts)
 
+        # t_fit = time.time() - t_start
+
         # tusimple test data sample point along y axis every 10 pixels
         source_image_width = source_image.shape[1]
         lane = []
-        for index, single_lane_pts in enumerate(src_lane_pts):
+
+        if data_source == 'tusimple':
             background_img = np.zeros(shape=(720, 1280), dtype=np.uint8)
+        elif data_source == 'jiqing':
+            background_img = np.zeros(shape=(1080, 1920), dtype=np.uint8)
+        elif data_source == 'caltech':
+            background_img = np.zeros(shape=(480, 640), dtype=np.uint8)
+
+        for index, single_lane_pts in enumerate(src_lane_pts):
+            """
+            if data_source == 'tusimple':
+                background_img = np.zeros(shape=(720, 1280), dtype=np.uint8)
+            elif data_source == 'jiqing':
+                background_img = np.zeros(shape=(1080, 1920), dtype=np.uint8)
+            elif data_source == 'caltech':
+                background_img = np.zeros(shape=(480, 640), dtype=np.uint8)
+            else:
+                raise ValueError('Wrong data source now only support tusimple and beec_ccd')"""
 
             single_lane_pt_x = np.array(single_lane_pts, dtype=np.float32)[:, 0]
             single_lane_pt_y = np.array(single_lane_pts, dtype=np.float32)[:, 1]
             if data_source == 'tusimple':
                 start_plot_y = 240
                 end_plot_y = 720
-            elif data_source == 'beec_ccd':
-                start_plot_y = 820
-                end_plot_y = 1350
+            elif data_source == 'jiqing':
+                start_plot_y = 600
+                end_plot_y = 850
+            elif data_source == 'caltech':
+                start_plot_y = 190
+                end_plot_y = 350
             else:
                 raise ValueError('Wrong data source now only support tusimple and beec_ccd')
             step = int(math.floor((end_plot_y - start_plot_y) / 10))
@@ -1025,10 +1088,22 @@ class LaneNetPostProcessor_for_nontusimple(object):
             lane_color = self._color_map[index].tolist()
 
             cv2.polylines(source_image, pred_lane_pts, isClosed=False, color=lane_color, thickness=5)
-            cv2.polylines(background_img, pred_lane_pts, isClosed=False, color=255, thickness=2)
+            cv2.polylines(background_img, pred_lane_pts, isClosed=False, color=255, thickness=5) # thickness=2
 
+            if data_source == 'tusimple':
+                start_plot_y = 160
+                end_plot_y = 720
+            elif data_source == 'jiqing':
+                start_plot_y = 610
+                end_plot_y = 850
+            elif data_source == 'caltech':
+                start_plot_y = 190
+                end_plot_y = 350
+            else:
+                raise ValueError('Wrong data source now only support tusimple and beec_ccd')
+            """
             lane_pred = []
-            for plot_y_single_lane in np.arange(160, 720, 10):
+            for plot_y_single_lane in np.arange(start_plot_y, end_plot_y, 10):
                 if np.count_nonzero(background_img[plot_y_single_lane]) == 0:
                     pred_dot_x = -2
                     lane_pred.append(pred_dot_x)
@@ -1036,12 +1111,16 @@ class LaneNetPostProcessor_for_nontusimple(object):
                 idx = np.where(np.equal(background_img[plot_y_single_lane], 255))
                 pred_dot_x = (idx[0][0] + idx[0][-1]) / 2
                 lane_pred.append(int(round(pred_dot_x)))
-            lane.append(lane_pred)
+            lane.append(lane_pred)"""
 
         ret = {
             'mask_image': mask_image,
             'fit_params': fit_params,
             'source_image': source_image,
-            'lane_pts': lane
+            'lane_pts': lane,
+            'pred_result':background_img
         }
+        # t_ploy = time.time() - t_start
+
+        # print("post ",t_resize, t_clu)
         return ret
