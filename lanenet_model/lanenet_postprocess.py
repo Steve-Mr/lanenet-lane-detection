@@ -187,7 +187,7 @@ class _LaneNetCluster(object):
                            np.array([100, 50, 100])]
 
     @staticmethod
-    def _embedding_feats_dbscan_cluster(embedding_image_feats, eps = 0.35, min_samples = 200):# 0.50 700
+    def _embedding_feats_dbscan_cluster(embedding_image_feats, eps = 0.50, min_samples = 100):# 0.50 700 (2)200
 
         """
         dbscan cluster
@@ -927,9 +927,9 @@ class LaneNetPostProcessor_for_nontusimple(object):
 
         # t_pre = time.time() - t_start
 
-        if data_source == "jiqing":
-            morphological_ret = morphological_ret[:215]
-            instance_seg_result= instance_seg_result[:215]
+        # if data_source == "jiqing":
+          #   morphological_ret = morphological_ret[:215]
+            # instance_seg_result= instance_seg_result[:215]
             # morphological_ret = cv2.resize(morphological_ret, (1024, 256), interpolation=cv2.INTER_LINEAR)
             # instance_seg_result = cv2.resize(instance_seg_result, (1024, 256), interpolation=cv2.INTER_LINEAR)
         # if data_source == 'caltech':
@@ -967,11 +967,14 @@ class LaneNetPostProcessor_for_nontusimple(object):
                 # 新建空白 tmp_mask 并根据 mask_image 已有坐标进行变换后改变对应坐标的值
             elif data_source == 'jiqing':
                 tmp_mask = np.zeros(shape=(1080, 1920), dtype=np.uint8)
-                tmp_mask[tuple((np.int_(coords[:, 1] * 1080 / 256), np.int_(coords[:, 0] * 1920 / 512)))] = 255
+                tmp_mask[tuple((np.int_(coords[:, 1] * 300 / 256 + 540), np.int_(coords[:, 0] * 1920 / 512)))] = 255
             elif data_source == 'caltech':
                 tmp_mask = np.zeros(shape=(480, 640), dtype=np.uint8)
                 # tmp_mask[tuple((np.int_(coords[:, 1] * 480 / 256), np.int_(coords[:, 0] * 640 / 512)))] = 255
                 tmp_mask[tuple((np.int_(coords[:, 1] * 420 / 256 +10), np.int_(coords[:, 0] * 560 / 512 + 40)))] = 255
+            elif data_source == 'vpgnet':
+                tmp_mask = np.zeros(shape=(480, 640), dtype=np.uint8)
+                tmp_mask[tuple((np.int_(coords[:, 1] * 480 / 256), np.int_(coords[:, 0] * 640 / 512)))] = 255
                 """
                 plt.figure("tmp")
                 plt.imshow(tmp_mask)
@@ -1018,6 +1021,8 @@ class LaneNetPostProcessor_for_nontusimple(object):
             background_img = np.zeros(shape=(1080, 1920), dtype=np.uint8)
         elif data_source == 'caltech':
             background_img = np.zeros(shape=(480, 640), dtype=np.uint8)
+        elif data_source == 'vpgnet':
+            background_img = np.zeros(shape=(480, 640), dtype=np.uint8)
 
         for index, single_lane_pts in enumerate(src_lane_pts):
             """
@@ -1041,6 +1046,9 @@ class LaneNetPostProcessor_for_nontusimple(object):
             elif data_source == 'caltech':
                 start_plot_y = 190
                 end_plot_y = 350
+            elif data_source == 'vpgnet':
+                start_plot_y = 210
+                end_plot_y = 480
             else:
                 raise ValueError('Wrong data source now only support tusimple and beec_ccd')
             step = int(math.floor((end_plot_y - start_plot_y) / 10))
@@ -1099,6 +1107,9 @@ class LaneNetPostProcessor_for_nontusimple(object):
             elif data_source == 'caltech':
                 start_plot_y = 190
                 end_plot_y = 350
+            elif data_source == 'vpgnet':
+                start_plot_y = 210
+                end_plot_y = 480
             else:
                 raise ValueError('Wrong data source now only support tusimple and beec_ccd')
             """

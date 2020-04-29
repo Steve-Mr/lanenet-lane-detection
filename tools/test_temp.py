@@ -1,3 +1,5 @@
+import tqdm
+
 from lanenet_model import lanenet_postprocess
 from config import global_config
 import matplotlib.pyplot as plt
@@ -5,12 +7,20 @@ import cv2
 import os.path as ops
 import numpy as np
 import re
+import os
 
 import tensorflow as tf
 from tensorflow.python.platform import gfile
 
 CFG = global_config.cfg
 
+
+def get_label_list(path):
+    label_list = []
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            label_list.append(ops.join(path, file))
+    return label_list
 
 def pred_sample(binary_path, instance_path, image_path):
     binary = cv2.resize(cv2.imread(binary_path),(512,256), interpolation=cv2.INTER_LINEAR)/127.5 - 1.0
@@ -63,17 +73,41 @@ def gengrate_test(path, image_path):
             pattern = re.compile(r'[(](.*?)[)]', re.S)
             print(re.findall(pattern, line))
             pts = re.findall(pattern, line)
-            pts_new = []
+            coord_list = []
             for pt in pts:
                 pt = [int(float(pt.split(',')[0])), int(float(pt.split(',')[1]))]
-                pts_new.append(pt)
-
-            pts_new = np.array([pts_new], np.int64)
-            print(pts_new)
-            cv2.polylines(background, pts_new, isClosed=False, color=255, thickness=5)
+                coord_list.append(pt)
+            coord_list = np.array([coord_list], np.int64)
+            print(coord_list)
+            cv2.polylines(background, coord_list, isClosed=False, color=255, thickness=5)
         plt.figure("background")
         plt.imshow(background)
         plt.show()
+
+def generate_jiqing_label(src_path, dst_path):
+    label_file_list = get_label_list(src_path)
+    for index, label_file_path in tqdm.tqdm(enumerate(label_file_list), total = len(label_file_list)):
+        background = np.zeros(shape=(1080, 1920), dtype=np.uint8)
+        with open(label_file_path) as file:
+            for line in file:
+                coords = line.split(":")[-1]
+                pattern = re.compile(r'[(](.*?)[)]', re.S)
+                pts = re.findall(pattern, coords)
+                coord_list = []
+                for pt in pts:
+                    pt = [int(float(pt.split(',')[0])), int(float(pt.split(',')[1]))]
+                    coord_list.append(pt)
+                coord_list = np.array([coord_list], np.int64)
+                cv2.polylines(background, coord_list, isClosed=False, color=255, thickness=5)
+            folder_path = ops.join(dst_path, src_path.split("/")[-1])
+            if not ops.exists(folder_path):
+                os.makedirs(folder_path)
+            # file_path = folder_path + str(index) + '.png'
+            file_path = ops.join(folder_path, str(index) + '.png')
+            cv2.imwrite(file_path, background)
+
+
+
 
 
 if __name__ == '__main__':
@@ -83,6 +117,9 @@ if __name__ == '__main__':
 
     # show_graph_architecture("./model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt.meta")
 
-    #process_video('/media/stevemaary/新加卷/data/Jiqing Expressway Video/', 'IMG_0291.MOV')
-    gengrate_test('/media/stevemaary/新加卷/data/caltech/caltech-lanes/label/cordova1/0.txt',
-                  '/media/stevemaary/新加卷/data/caltech/caltech-lanes/cordova1/f00000.png')
+    # process_video('/media/stevemaary/新加卷/data/Jiqing Expressway Video/', 'IMG_0291.MOV')
+    # gengrate_test('/media/stevemaary/新加卷/data/caltech/caltech-lanes/label/cordova1/0.txt',
+    #               '/media/stevemaary/新加卷/data/caltech/caltech-lanes/cordova1/f00000.png')
+
+    generate_jiqing_label('/media/stevemaary/新加卷/data/Jiqing Expressway Video/Lane_Parameters/0259',
+                          '/media/stevemaary/新加卷/data/Jiqing Expressway Video/label')

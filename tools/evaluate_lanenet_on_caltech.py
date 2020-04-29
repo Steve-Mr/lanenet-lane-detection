@@ -81,14 +81,66 @@ def calculate_accuracy(pred_path, label_path):
         pred = pred.astype((np.float32))
         label = label.astype((np.float32))
 
-        print(np.count_nonzero(pred))
-        print(np.count_nonzero(label))
-        """
-        plt.figure("image")
-        plt.imshow(pred)
-        plt.figure("label")
-        plt.imshow(label)
-        plt.show()"""
+        accuracy = evaluate_model_utils.calculate_model_precision_for_test(pred, label)
+        fn = evaluate_model_utils.calculate_model_fn(pred, label)
+        fp = evaluate_model_utils.calculate_model_fp(pred, label)
+
+        sess_config = tf.ConfigProto()
+        sess_config.gpu_options.per_process_gpu_memory_fraction = 0.5
+        sess_config.gpu_options.allow_growth = False
+        sess_config.gpu_options.allocator_type = 'BFC'  # best fit with coalescing  内存管理算法
+        sess_config.allow_soft_placement = True
+        sess_config.log_device_placement = False
+        sess = tf.Session(config=sess_config)
+
+        with sess.as_default():
+            # accuracy_result, fn_result, fp_result = sess.run([accuracy, fn, fp])
+            accuracy_result, a, b = sess.run(accuracy)
+            sess.close()
+        tf.reset_default_graph()
+
+        accuracy_list.append(accuracy_result)
+        a_list.append(a)
+        b_list.append(b)
+        # fp_list.append(fp_result)
+        # fn_list.append(fn_result)
+
+        accuracy_sum = accuracy_sum + accuracy_result
+        # fp_sum = fp_sum + fp_result
+        # fn_sum = fn_sum + fn_result
+
+    print("accuracy ", accuracy_sum / len(label_list))
+    # print("fp ", fp_sum/len(label_list))
+    # print("fn ", fn_sum/len(label_list))
+    print(accuracy_list)
+    print(a_list)
+    print(b_list)
+    # print(fp_list)
+    # print(fn_list)
+
+
+def calculate_accuracy_jiqing(pred_path, label_path):
+    label_list = get_label_list(label_path)
+    pred_list = get_label_list(pred_path)
+    accuracy_list = []
+    # fp_list = []
+    # fn_list = []
+    accuracy_sum = 0
+    # fp_sum = 0
+    # fn_sum = 0
+    a_list = []
+    b_list = []
+
+    for index, pred_path in tqdm.tqdm(enumerate(pred_list), total=len(pred_list)):
+        label_name = pred_path.split('/')[-1]
+        label = cv2.imread(ops.join(label_path, label_name), cv2.IMREAD_COLOR)
+        pred = cv2.imread(pred_path, cv2.IMREAD_COLOR)
+
+        pred = pred.astype((np.float32))
+        label = label.astype((np.float32))
+
+        pred = cv2.resize(pred, (512, 256), interpolation=cv2.INTER_LINEAR)
+        label = cv2.resize(label, (512, 256), interpolation=cv2.INTER_LINEAR)
 
         accuracy = evaluate_model_utils.calculate_model_precision_for_test(pred, label)
         fn = evaluate_model_utils.calculate_model_fn(pred, label)
@@ -134,5 +186,8 @@ if __name__ == '__main__':
     #                      '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label/cordova1',
     #                      '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/cordova1')
     # label_list = get_label_list('/media/stevemaary/新加卷/data/caltech/caltech-lanes/label/cordova1')
-    calculate_accuracy('/media/stevemaary/新加卷/data/caltech/caltech-lanes/pred/cordova1/',
-                       '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/cordova1/label/')
+    # calculate_accuracy('/media/stevemaary/新加卷/data/caltech/caltech-lanes/pred/cordova1/',
+    #                    '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/cordova1/label/')
+
+    calculate_accuracy_jiqing('/media/stevemaary/新加卷/data/pred/IMG_0259/',
+                       '/media/stevemaary/新加卷/data/Jiqing Expressway Video/label/0259/')

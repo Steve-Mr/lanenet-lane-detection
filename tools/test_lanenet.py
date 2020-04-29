@@ -401,7 +401,7 @@ def test_lanenet_nontusimple(image_path, weights_path):
             binary_seg_result=binary_seg_image[0],
             instance_seg_result=instance_seg_image[0],
             source_image=image_vis,
-            data_source='jiqing'
+            data_source='vpgnet'
         )
 
         mask_image = postprocess_result['mask_image']
