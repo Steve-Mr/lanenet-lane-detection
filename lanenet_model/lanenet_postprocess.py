@@ -10,6 +10,7 @@ LaneNet model post process
 """
 import os.path as ops
 import math
+import time
 
 import cv2
 import glog as log
@@ -187,7 +188,7 @@ class _LaneNetCluster(object):
                            np.array([100, 50, 100])]
 
     @staticmethod
-    def _embedding_feats_dbscan_cluster(embedding_image_feats, eps = 0.50, min_samples = 100):# 0.50 700 (2)200
+    def _embedding_feats_dbscan_cluster(embedding_image_feats, eps=0.35, min_samples=100):# 0.50 700 (2)200
 
         """
         dbscan cluster
@@ -351,7 +352,7 @@ class _LaneNetCluster(object):
             pix_coord_idx = tuple((coord[idx][:, 1], coord[idx][:, 0]))  # tuple 即元组 不可修改
             # 获得所有属于该 label 的点坐标
             # coord[idx]第1列全部，coord[idx]第0列全部
-            mask[pix_coord_idx] = self._color_map[index]
+            mask[pix_coord_idx] = self._color_map[0]    # [index]
             # 给线条上色
             lane_coords.append(coord[idx])
         # t_end = time.time() - t_start
@@ -453,6 +454,11 @@ class LaneNetPostProcessor(object):
                            np.array([125, 0, 125]),
                            np.array([50, 100, 50]),
                            np.array([100, 50, 100])]
+
+        self.pre = []
+        self.cluster = []
+        self.fit = []
+        self.full = []
 
     def _load_remap_matrix(self):
 
@@ -668,6 +674,10 @@ class LaneNetPostProcessor(object):
         :param data_source:
         :return:
         """
+
+
+        t_start = time.time()
+
         # convert binary_seg_result
         #
         binary_seg_result = np.array(binary_seg_result * 255, dtype=np.uint8)
@@ -703,6 +713,9 @@ class LaneNetPostProcessor(object):
                 idx = np.where(labels == index)
                 morphological_ret[idx] = 0
 
+        t_pre = time.time() - t_start
+        self.pre.append(t_pre)
+
         # apply embedding features cluster
         mask_image, lane_coords = self._cluster.apply_lane_feats_cluster(
             binary_seg_result=morphological_ret,
@@ -715,6 +728,9 @@ class LaneNetPostProcessor(object):
                 'fit_params': None,
                 'source_image': None,
             }
+
+        t_cluster = time.time() - t_start - t_pre
+        self.cluster.append(t_cluster)
 
         """
         lane line fit
@@ -742,14 +758,16 @@ class LaneNetPostProcessor(object):
             nonzero_y = np.array(tmp_ipm_mask.nonzero()[0])
             nonzero_x = np.array(tmp_ipm_mask.nonzero()[1])
 
-            fit_param = np.polyfit(nonzero_y, nonzero_x, 2)
+            fit_param = np.polyfit(nonzero_y, nonzero_x, 3)
             # 进行拟合，目标函数为二次函数
             fit_params.append(fit_param)
 
             [ipm_image_height, ipm_image_width] = tmp_ipm_mask.shape
             plot_y = np.linspace(10, ipm_image_height, ipm_image_height - 10)
             # linspace(start, stop, num) 生成从 start 到 stop num 个数的等差数列
-            fit_x = fit_param[0] * plot_y ** 2 + fit_param[1] * plot_y + fit_param[2]
+            # fit_x = fit_param[0] * plot_y ** 2 + fit_param[1] * plot_y + fit_param[2]
+            fit_x = fit_param[0] * plot_y ** 3 + fit_param[1] * plot_y ** 2 + fit_param[2] * plot_y + fit_param[3]
+
 
             lane_pts = []
             # lane points 车道线点坐标
@@ -768,6 +786,9 @@ class LaneNetPostProcessor(object):
                 lane_pts.append([src_x, src_y])
 
             src_lane_pts.append(lane_pts)
+
+        t_fit = time.time() - t_start - t_pre - t_cluster
+        self.fit.append(t_fit)
 
         # tusimple test data sample point along y axis every 10 pixels
         source_image_width = source_image.shape[1]
@@ -850,8 +871,17 @@ class LaneNetPostProcessor(object):
             'lane_pts': lane
         }
 
+        t_full = time.time() - t_start
+        self.full.append(t_full)
+
         return ret
 
+
+    def compute_mean_time(self):
+        print("pre: ", np.mean(self.pre),
+              "cluster: ", np.mean(self.cluster),
+              "fit: ", np.mean(self.fit),
+              "full: ", np.mean(self.full))
 
 class LaneNetPostProcessor_for_nontusimple(object):
     """
@@ -876,6 +906,11 @@ class LaneNetPostProcessor_for_nontusimple(object):
                            np.array([50, 100, 50]),
                            np.array([100, 50, 100])]
 
+        self.pre = []
+        self.cluster = []
+        self.fit = []
+        self.full = []
+
     def postprocess_for_non_tusimple(self, binary_seg_result, instance_seg_result=None,
                                      min_area_threshold=100, source_image=None,
                                      data_source='tusimple'):
@@ -889,6 +924,8 @@ class LaneNetPostProcessor_for_nontusimple(object):
         :param data_source:
         :return:
         """
+
+        t_start = time.time()
 
         # t_start = time.time()
 
@@ -938,6 +975,9 @@ class LaneNetPostProcessor_for_nontusimple(object):
 
         # t_resize = time.time() - t_start
 
+        t_pre = time.time() - t_start
+        self.pre.append(t_pre)
+
         # apply embedding features cluster
         mask_image, lane_coords = self._cluster.apply_lane_feats_cluster(
             binary_seg_result=morphological_ret,
@@ -952,6 +992,9 @@ class LaneNetPostProcessor_for_nontusimple(object):
                 'fit_params': None,
                 'source_image': None,
             }
+
+        t_cluster = time.time() - t_start - t_pre
+        self.cluster.append(t_cluster)
 
         # t_dbscan = time.time() - t_start
 
@@ -975,6 +1018,9 @@ class LaneNetPostProcessor_for_nontusimple(object):
             elif data_source == 'vpgnet':
                 tmp_mask = np.zeros(shape=(480, 640), dtype=np.uint8)
                 tmp_mask[tuple((np.int_(coords[:, 1] * 480 / 256), np.int_(coords[:, 0] * 640 / 512)))] = 255
+            elif data_source == 'culane':
+                tmp_mask = np.zeros(shape=(590, 1640), dtype=np.uint8)
+                tmp_mask[tuple((np.int_(coords[:, 1] * 430 / 256), np.int_(coords[:, 0] * 1640 / 512)))] = 255
                 """
                 plt.figure("tmp")
                 plt.imshow(tmp_mask)
@@ -986,16 +1032,18 @@ class LaneNetPostProcessor_for_nontusimple(object):
             nonzero_y = np.array(tmp_mask.nonzero()[0])
             nonzero_x = np.array(tmp_mask.nonzero()[1])
 
-            fit_param = np.polyfit(nonzero_y, nonzero_x, 2)
+            fit_param = np.polyfit(nonzero_y, nonzero_x, 3) #3
             fit_params.append(fit_param)
 
             [ipm_image_height, ipm_image_width] = tmp_mask.shape
-            plot_y = np.linspace(10, tmp_mask.nonzero()[0][-1], tmp_mask.nonzero()[0][-1] - 10)
+            # plot_y = np.linspace(10, 420, 410)# tmp_mask.nonzero()[0][-1], tmp_mask.nonzero()[0][-1] - 10)
             # plot_y = np.linspace(10, ipm_image_height, ipm_image_height - 10)
+            # plot_y = np.linspace(10, tmp_mask.nonzero()[0][-1], tmp_mask.nonzero()[0][-1] - 10)
+            plot_y = np.linspace(10, 590, 580)
 
             # linspace(start, stop, num) 生成从 start 到 stop num 个数的等差数列
-            # fit_x = fit_param[0] * plot_y ** 3 + fit_param[1] * plot_y ** 2 + fit_param[2] * plot_y + fit_param[3]
-            fit_x = fit_param[0] * plot_y ** 2 + fit_param[1] * plot_y + fit_param[2]
+            fit_x = fit_param[0] * plot_y ** 3 + fit_param[1] * plot_y ** 2 + fit_param[2] * plot_y + fit_param[3]
+            # fit_x = fit_param[0] * plot_y ** 2 + fit_param[1] * plot_y + fit_param[2]
 
             lane_pts = []
             # lane points 车道线点坐标
@@ -1009,12 +1057,13 @@ class LaneNetPostProcessor_for_nontusimple(object):
 
             src_lane_pts.append(lane_pts)
 
-        # t_fit = time.time() - t_start
+        t_fit = time.time() - t_start - t_pre - t_cluster
+        self.fit.append(t_fit)
 
         # tusimple test data sample point along y axis every 10 pixels
         source_image_width = source_image.shape[1]
         lane = []
-
+        """
         if data_source == 'tusimple':
             background_img = np.zeros(shape=(720, 1280), dtype=np.uint8)
         elif data_source == 'jiqing':
@@ -1023,17 +1072,19 @@ class LaneNetPostProcessor_for_nontusimple(object):
             background_img = np.zeros(shape=(480, 640), dtype=np.uint8)
         elif data_source == 'vpgnet':
             background_img = np.zeros(shape=(480, 640), dtype=np.uint8)
-
+        """
         for index, single_lane_pts in enumerate(src_lane_pts):
-            """
+
             if data_source == 'tusimple':
                 background_img = np.zeros(shape=(720, 1280), dtype=np.uint8)
             elif data_source == 'jiqing':
                 background_img = np.zeros(shape=(1080, 1920), dtype=np.uint8)
             elif data_source == 'caltech':
                 background_img = np.zeros(shape=(480, 640), dtype=np.uint8)
+            elif data_source == 'culane':
+                background_img = np.zeros(shape=(590, 1640), dtype=np.uint8)
             else:
-                raise ValueError('Wrong data source now only support tusimple and beec_ccd')"""
+                raise ValueError('Wrong data source now only support tusimple and beec_ccd')
 
             single_lane_pt_x = np.array(single_lane_pts, dtype=np.float32)[:, 0]
             single_lane_pt_y = np.array(single_lane_pts, dtype=np.float32)[:, 1]
@@ -1045,10 +1096,13 @@ class LaneNetPostProcessor_for_nontusimple(object):
                 end_plot_y = 850
             elif data_source == 'caltech':
                 start_plot_y = 190
-                end_plot_y = 350
+                end_plot_y = 480
             elif data_source == 'vpgnet':
                 start_plot_y = 210
                 end_plot_y = 480
+            elif data_source == 'culane':
+                start_plot_y = 290
+                end_plot_y = 570
             else:
                 raise ValueError('Wrong data source now only support tusimple and beec_ccd')
             step = int(math.floor((end_plot_y - start_plot_y) / 10))
@@ -1095,7 +1149,7 @@ class LaneNetPostProcessor_for_nontusimple(object):
 
             lane_color = self._color_map[index].tolist()
 
-            cv2.polylines(source_image, pred_lane_pts, isClosed=False, color=lane_color, thickness=5)
+            cv2.polylines(source_image, pred_lane_pts, isClosed=False, color=(255,255,255), thickness=5)
             cv2.polylines(background_img, pred_lane_pts, isClosed=False, color=255, thickness=5) # thickness=2
 
             if data_source == 'tusimple':
@@ -1106,13 +1160,16 @@ class LaneNetPostProcessor_for_nontusimple(object):
                 end_plot_y = 850
             elif data_source == 'caltech':
                 start_plot_y = 190
-                end_plot_y = 350
+                end_plot_y = 480
             elif data_source == 'vpgnet':
                 start_plot_y = 210
                 end_plot_y = 480
+            elif data_source == 'culane':
+                start_plot_y = 290
+                end_plot_y = 570
             else:
                 raise ValueError('Wrong data source now only support tusimple and beec_ccd')
-            """
+
             lane_pred = []
             for plot_y_single_lane in np.arange(start_plot_y, end_plot_y, 10):
                 if np.count_nonzero(background_img[plot_y_single_lane]) == 0:
@@ -1122,16 +1179,26 @@ class LaneNetPostProcessor_for_nontusimple(object):
                 idx = np.where(np.equal(background_img[plot_y_single_lane], 255))
                 pred_dot_x = (idx[0][0] + idx[0][-1]) / 2
                 lane_pred.append(int(round(pred_dot_x)))
-            lane.append(lane_pred)"""
+            lane.append(lane_pred)
 
         ret = {
             'mask_image': mask_image,
             'fit_params': fit_params,
             'source_image': source_image,
-            'lane_pts': lane,
-            'pred_result':background_img
+            'lane_pts': lane# ,
+            # 'pred_result':background_img
         }
+
+        t_full = time.time() - t_start
+        self.full.append(t_full)
         # t_ploy = time.time() - t_start
 
         # print("post ",t_resize, t_clu)
         return ret
+
+
+    def compute_mean_time(self):
+        print("pre: ", np.mean(self.pre),
+              "cluster: ", np.mean(self.cluster),
+              "fit: ", np.mean(self.fit),
+              "full: ", np.mean(self.full))

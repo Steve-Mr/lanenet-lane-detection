@@ -11,11 +11,11 @@ def convert_from_frozen_graph():
         'lanenet/final_binary_output',
         'lanenet/final_pixel_embedding_output'
     ]
-    convert = tf.compat.v1.lite.TFLiteConverter.from_frozen_graph("./mnn_project/lanenet.pb", ["lanenet/input_tensor"],
+    convert = tf.compat.v1.lite.TFLiteConverter.from_frozen_graph("./mnn_project/OptimizedGraph.pb", ["lanenet/input_tensor"],
                                                                   output_node_names,
                                                                   input_shapes={
                                                                       "lanenet/input_tensor": [1, 256, 512, 3]})
-    # convert.post_training_quantize = True
+    convert.post_training_quantize = True
     tflite_model = convert.convert()
     open("./mnn_project/quantized_model.tflite", "wb").write(tflite_model)
     print("finish")

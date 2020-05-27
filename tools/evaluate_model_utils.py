@@ -104,15 +104,15 @@ def calculate_model_precision_for_test(input_tensor, label_tensor):
 
     accuracy_result = tf.divide(
         accuracy,
-        # tf.count_nonzero(label_tensor))
+        tf.count_nonzero(label_tensor))
         # tf.cast(tf.shape(tf.gather_nd(label_tensor, tf.where(tf.not_equal(label_tensor, 0))))[0], tf.int64))
-        tf.cast(tf.shape(tf.gather_nd(label_tensor, tf.where(tf.equal(label_tensor, 255))))[0], tf.int64))
+        #tf.cast(tf.shape(tf.gather_nd(label_tensor, tf.where(tf.equal(label_tensor, 255))))[0], tf.int64))
 
     """
     the average correct number of points per image (Cim/Sim)
     with Cim the number of correct points and Sim the number of ground-truth points
     """
-    return accuracy_result, accuracy, tf.count_nonzero(label_tensor)  #, logits, tf.cast(tf.shape(tf.gather_nd(label_tensor, tf.where(tf.equal(label_tensor, 255))))[0], tf.int64)
+    return accuracy_result, tf.count_nonzero(input_tensor), tf.count_nonzero(label_tensor)  #, logits, tf.cast(tf.shape(tf.gather_nd(label_tensor, tf.where(tf.equal(label_tensor, 255))))[0], tf.int64)
 
 
 def calculate_model_fp_for_test(input_tensor, label_tensor):

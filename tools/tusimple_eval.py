@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 import ujson as json
 import os.path as ops
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import os
 
 from tools.generate_prediction_results import generate_prediction_result
@@ -20,14 +20,13 @@ class LaneEval(object):
         xs, ys = xs[xs >= 0], y_samples[xs >= 0]
 
         if len(xs) > 1:
-            plt.scatter(xs, ys)
-            plt.show()
+            # plt.scatter(xs, ys)
+            # plt.show()
             # print("xs, ys ", xs, ys)
             LaneEval.lr.fit(ys[:, None], xs)
             k = LaneEval.lr.coef_[0]
             theta = np.arctan(k)
         else:
-            print("xs, ys ", xs, ys)
             theta = 0
         return theta
 
@@ -47,11 +46,7 @@ class LaneEval(object):
 
         angles = [LaneEval.get_angle(np.array(x_gts), np.array(y_samples)) for x_gts in gt]
 
-        print("angles", angles)
-
         threshs = [LaneEval.pixel_thresh / np.cos(angle) for angle in angles]
-
-        print(threshs)
 
         line_accs = []
         fp, fn = 0., 0.
@@ -220,8 +215,8 @@ def copy_missed_results(src_dir, dst_dir):
 
 if __name__ == '__main__':
 
-    # generate_prediction_result('/media/stevemaary/68A0799BA0797104/Users/a1975/Documents/lanenet_related_files/', '/home/stevemaary/data/pred',
-    #                            './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
+    generate_prediction_result('/media/stevemaary/68A0799BA0797104/Users/a1975/Documents/lanenet_related_files/', '/home/stevemaary/data/pred',
+                               './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
 
     import sys
     try:

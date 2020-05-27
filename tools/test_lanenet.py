@@ -366,7 +366,8 @@ def test_lanenet_nontusimple(image_path, weights_path):
     image_vis = image
     # image_vis = cv2.imread('/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/cordova1/label/f00028.png', cv2.IMREAD_COLOR)
 
-    # image = image[:420, 40:600]
+    # image = image[10:430, 40:600]
+    image = image[:430]
 
     image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
 
@@ -401,7 +402,7 @@ def test_lanenet_nontusimple(image_path, weights_path):
             binary_seg_result=binary_seg_image[0],
             instance_seg_result=instance_seg_image[0],
             source_image=image_vis,
-            data_source='vpgnet'
+            data_source='culane'
         )
 
         mask_image = postprocess_result['mask_image']

@@ -6,6 +6,9 @@ import time
 import matplotlib.pyplot as plt
 import tqdm
 import numpy as np
+from random import sample
+import imghdr
+
 
 from lanenet_model import lanenet, lanenet_postprocess
 from config import global_config
@@ -126,17 +129,25 @@ def evaluate_on_caltech(src_path, pred_path, weights_path):
 
     with sess.as_default():
         saver.restore(sess=sess, save_path=weights_path)
+
+        avg_inference_time_cost = []
+        avg_full_time_cost = []
+
         for index, image_path in tqdm.tqdm(enumerate(image_list), total=len(image_list)):
             image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-            image_vis = image
+            image_vis = np.zeros(shape=(480, 640, 3), dtype=np.uint8)
             image = image[10:430, 40:600]
             image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
             image = image / 127.5 - 1.0  # 归一化 (只归一未改变维数)
+
+            t_start = time.time()
 
             binary_seg_image, instance_seg_image = sess.run(
                 [binary_seg_ret, instance_seg_ret],
                 feed_dict={input_tensor: [image]}
             )
+
+            avg_inference_time_cost.append(time.time() - t_start)
 
             postprocess_result = postprocessor.postprocess_for_non_tusimple(
                 binary_seg_result=binary_seg_image[0],
@@ -145,14 +156,19 @@ def evaluate_on_caltech(src_path, pred_path, weights_path):
                 data_source='caltech'
             )
 
+            avg_full_time_cost.append(time.time() - t_start)
+
             dst_image_path = ops.join(pred_path, image_path.split('/')[-2])
             if not ops.exists(dst_image_path):
                 os.makedirs(dst_image_path)
             dst_image_path = ops.join(dst_image_path, image_path.split('/')[-1])
 
+            dst_full_image_path = ops.join(pred_path, 'full' ,image_path.split('/')[-2])
+            if not ops.exists(dst_full_image_path):
+                os.makedirs(dst_full_image_path)
+            dst_full_image_path = ops.join(dst_full_image_path, image_path.split('/')[-1])
+
             binary = lanenet_postprocess._morphological_process(binary_seg_image[0])
-            print(binary.shape)
-            print(postprocess_result['mask_image'].shape)
 
             mask = cv2.resize(binary, (560, 420), interpolation=cv2.INTER_LINEAR)
             back = np.zeros(shape=(480, 640), dtype=np.uint8)
@@ -162,9 +178,137 @@ def evaluate_on_caltech(src_path, pred_path, weights_path):
                     # back[j + 10, i + 40, 1] = mask[j, i, 1]
                     # back[j + 10, i + 40, 2] = mask[j, i, 2]
 
-            # cv2.imwrite(dst_image_path, postprocess_result['mask_image'])    # postprocess_result['mask_image'])
-            # cv2.imwrite(dst_image_path, image_vis)
+
+            # cv2.imwrite(dst_image_path, back*255)    # postprocess_result['mask_image'])
+            cv2.imwrite(dst_full_image_path, postprocess_result['source_image'])
+        """
+        with open(ops.join(pred_path, 'log.txt'), 'a') as log_file:
+            print(
+                'Mean inference time every single image: {:.5f}s, Mean postprocess time every single image: {:.5f}s, Mean full time every single image: {:.5f}s,'
+                .format(np.mean(avg_inference_time_cost),
+                        np.mean(avg_full_time_cost) - np.mean(avg_inference_time_cost),
+                        np.mean(avg_full_time_cost)),
+                file=log_file)
+        avg_inference_time_cost.clear()
+        avg_full_time_cost.clear()
+        """
+
+    return
+
+
+def generate_on_culane(src_path, list_file_name, pred_path, weights_path):
+    image_list = []
+    with open(ops.join(src_path,
+                       'list/test_split',
+                       list_file_name), 'r') as file:
+        for line in file:
+            image_list.append(ops.join(src_path, line.strip('\n')))
+
+    image_list = sample(image_list, 300)
+
+    input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
+    net = lanenet.LaneNet(phase='test', net_flag='vgg')
+    binary_seg_ret, instance_seg_ret = net.inference(input_tensor=input_tensor, name='lanenet_model')
+    postprocessor = lanenet_postprocess.LaneNetPostProcessor_for_nontusimple()
+
+    saver = tf.train.Saver()
+    sess_config = tf.ConfigProto()
+    sess_config.gpu_options.per_process_gpu_memory_fraction = CFG.TEST.GPU_MEMORY_FRACTION
+    sess_config.gpu_options.allow_growth = CFG.TRAIN.TF_ALLOW_GROWTH
+    sess_config.gpu_options.allocator_type = 'BFC'  # best fit with coalescing  内存管理算法
+    sess = tf.Session(config=sess_config)
+
+    with sess.as_default():
+        saver.restore(sess=sess, save_path=weights_path)
+
+        avg_inference_time_cost = []
+        avg_full_time_cost = []
+
+        for index, image_path in tqdm.tqdm(enumerate(image_list), total=len(image_list)):
+
+            # if imghdr.what(image_path) == None: continue
+            image_path = image_path.strip('\n')
+            image_path = image_path.strip()
+
+            label_path = image_path.rsplit('.', 1)[0] + '.lines.txt'
+            with open(label_path, 'r') as file:
+                label = np.zeros(shape=(590, 1640), dtype=np.uint8)
+                for line in file:
+                    pts = []
+                    line = line.strip('\n')
+                    raw_list = line.split()
+                    for index in range(0, len(raw_list), 2):
+                        pt = [int(float(raw_list[index])), int(float(raw_list[index+1]))]
+                        pts.append(pt)
+                    pts = np.array([pts], np.int64)
+                    cv2.polylines(label, pts, isClosed=False, color=255, thickness=5)
+            dst_label_path = ops.join(pred_path, list_file_name.split('.')[-2], 'label', image_path.split('/')[-2])
+            if not ops.exists(dst_label_path):
+                os.makedirs(dst_label_path)
+            dst_label_path = ops.join(dst_label_path, image_path.split('/')[-1])
+            cv2.imwrite(dst_label_path, label)
+
+            image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+            image_vis = np.zeros(shape=(590, 1640, 3), dtype=np.uint8)
+            # plt.figure('image')
+            # plt.imshow(image)
+            # plt.show()
+            image = image[:430]
+            image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
+            image = image / 127.5 - 1.0  # 归一化 (只归一未改变维数)
+
+            t_start = time.time()
+
+            binary_seg_image, instance_seg_image = sess.run(
+                [binary_seg_ret, instance_seg_ret],
+                feed_dict={input_tensor: [image]}
+            )
+
+            avg_inference_time_cost.append(time.time() - t_start)
+
+            postprocess_result = postprocessor.postprocess_for_non_tusimple(
+                binary_seg_result=binary_seg_image[0],
+                instance_seg_result=instance_seg_image[0],
+                source_image=image_vis,
+                data_source='culane'
+            )
+
+            avg_full_time_cost.append(time.time() - t_start)
+
+            dst_image_path = ops.join(pred_path, list_file_name.split('.')[-2], image_path.split('/')[-2])
+            if not ops.exists(dst_image_path):
+                os.makedirs(dst_image_path)
+            dst_image_path = ops.join(dst_image_path, image_path.split('/')[-1])
+
+            dst_full_image_path = ops.join(pred_path, list_file_name.split('.')[-2], 'full' ,image_path.split('/')[-2])
+            if not ops.exists(dst_full_image_path):
+                os.makedirs(dst_full_image_path)
+            dst_full_image_path = ops.join(dst_full_image_path, image_path.split('/')[-1])
+
+            binary = lanenet_postprocess._morphological_process(binary_seg_image[0])
+
+            mask = cv2.resize(binary, (1640, 430), interpolation=cv2.INTER_LINEAR)
+            back = np.zeros(shape=(590, 1640), dtype=np.uint8)
+            for i in range(1640):
+                for j in range(430):
+                    back[j, i] = mask[j, i]
+
             cv2.imwrite(dst_image_path, back*255)    # postprocess_result['mask_image'])
+            cv2.imwrite(dst_full_image_path, postprocess_result['source_image'])
+
+            with open(ops.join(pred_path, list_file_name.split('.')[-2], list_file_name), 'a') as pred_file:
+                print(image_path, file=pred_file)
+
+        with open(ops.join(pred_path, list_file_name.split('.')[-2], 'log.txt'), 'a') as log_file:
+            print(
+                'Mean inference time every single image: {:.5f}s, Mean postprocess time every single image: {:.5f}s, Mean full time every single image: {:.5f}s,'
+                .format(np.mean(avg_inference_time_cost),
+                        np.mean(avg_full_time_cost) - np.mean(avg_inference_time_cost),
+                        np.mean(avg_full_time_cost)),
+                file=log_file)
+        avg_inference_time_cost.clear()
+        avg_full_time_cost.clear()
+    postprocessor.compute_mean_time()
 
 
     return
@@ -286,17 +430,25 @@ if __name__ == '__main__':
              '/media/stevemaary/新加卷/data/pred/',
              './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
     """
-
     """
-    evaluate_on_caltech('/media/stevemaary/新加卷/data/caltech/caltech-lanes/cordova1',
+    evaluate_on_caltech('/media/stevemaary/新加卷/data/caltech/caltech-lanes/washington1',
                         '/media/stevemaary/新加卷/data/caltech/caltech-lanes/pred',
-                        './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')"""
+                        './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
+    """
+
+    generate_on_culane('/media/stevemaary/68A0799BA0797104/Users/a1975/Documents/lanenet_related_files/culane',
+                       'test8_night.txt',
+                       '/media/stevemaary/新加卷/data/culane',
+                       './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
+
     """
     generate_on_vpgnet('/media/stevemaary/新加卷/data/src/VPGNet/scene_4',
                        '/media/stevemaary/新加卷/data/pred/VPGNet',
                        './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
     """
 
+    """
     generate_on_jiqing('/media/stevemaary/新加卷/data/src/IMG_0259',
                        '/media/stevemaary/新加卷/data/pred/',
                        './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
+    """

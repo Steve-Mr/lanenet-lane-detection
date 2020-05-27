@@ -107,7 +107,28 @@ def generate_jiqing_label(src_path, dst_path):
             cv2.imwrite(file_path, background)
 
 
-
+def compute_mean_time(src_path):
+    inference_full = 0.0
+    postprocess_full = 0.0
+    full = 0.0
+    with open(src_path, 'r') as file:
+        pattern = re.compile(r"\d+\.?\d*", re.S)
+        for index, line in enumerate(file):
+            if index == 0: continue
+            if index == 27:
+                time_list = re.findall(pattern, line)
+                inference_full += float(time_list[0])*0.81
+                postprocess_full += float(time_list[1])*0.81
+                full += float(time_list[2])*0.81
+                continue
+            print(re.findall(pattern, line))
+            time_list = re.findall(pattern, line)
+            inference_full+=float(time_list[0])
+            postprocess_full+=float(time_list[1])
+            full+=float(time_list[2])
+        print("mean_inference: ", inference_full/index,
+              "mean_postprocess: ", postprocess_full/index,
+              "mean_full: ", full/index)
 
 
 if __name__ == '__main__':
@@ -121,5 +142,7 @@ if __name__ == '__main__':
     # gengrate_test('/media/stevemaary/新加卷/data/caltech/caltech-lanes/label/cordova1/0.txt',
     #               '/media/stevemaary/新加卷/data/caltech/caltech-lanes/cordova1/f00000.png')
 
-    generate_jiqing_label('/media/stevemaary/新加卷/data/Jiqing Expressway Video/Lane_Parameters/0259',
-                          '/media/stevemaary/新加卷/data/Jiqing Expressway Video/label')
+    # generate_jiqing_label('/media/stevemaary/新加卷/data/Jiqing Expressway Video/Lane_Parameters/0259',
+    #                       '/media/stevemaary/新加卷/data/Jiqing Expressway Video/label')
+
+    compute_mean_time("/home/stevemaary/data/pred/default/log")

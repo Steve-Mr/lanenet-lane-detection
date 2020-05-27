@@ -7,18 +7,28 @@ import matplotlib.pyplot as plt
 import tqdm
 import tensorflow as tf
 from config import global_config
+import math
 
 
 from tools import evaluate_model_utils
 
 CFG = global_config.cfg
 
-
 def get_label_list(path):
     label_list = []
     for root, dirs, files in os.walk(path):
-        for file in files:
-            label_list.append(ops.join(path, file))
+            for file in files:
+                label_list.append(ops.join(path, file))
+    return label_list
+
+def get_label_list_culane(path):
+    label_list = []
+    for root, dirs, files in os.walk(path):
+        for dir in dirs:
+            tmp_path = ops.join(root, dir)
+            for root_, dirs_, files_ in os.walk(tmp_path):
+                for file in files_:
+                    label_list.append(ops.join(root_, file))
     return label_list
 
 
@@ -45,45 +55,50 @@ def generate_label_image(src_path, label_path, dst_path):
     for index,label_path in tqdm.tqdm(enumerate(label_list), total=len(label_list)):
         order = int((label_path.split('/')[-1]).split('.')[0])
         background = np.zeros(shape=(480, 640), dtype=np.uint8)
-        image = cv2.imread(image_list[order], cv2.IMREAD_COLOR)
-        image = draw_labeled_image(label_path, image)
+        # image = cv2.imread(image_list[order], cv2.IMREAD_COLOR)
+        # image = draw_labeled_image(label_path, image)
         background = draw_labeled_image(label_path, background)
-        dst_img_path = dst_path + "/labeled_image/"
+        # dst_img_path = dst_path + "/labeled_image/"
         dst_back_path = dst_path + "/label/"
 
-        if not ops.exists(dst_img_path):
-            os.makedirs(dst_img_path)
+        # if not ops.exists(dst_img_path):
+        #    os.makedirs(dst_img_path)
         if not ops.exists(dst_back_path):
             os.makedirs(dst_back_path)
 
-        dst_img_path = ops.join(dst_img_path, image_list[order].split('/')[-1])
+       #  dst_img_path = ops.join(dst_img_path, image_list[order].split('/')[-1])
         dst_back_path = ops.join(dst_back_path, image_list[order].split('/')[-1])
-        cv2.imwrite(dst_img_path, image)
+        # cv2.imwrite(dst_img_path, image)
         cv2.imwrite(dst_back_path,background)
 
 
 def calculate_accuracy(pred_path, label_path):
-    label_list = get_label_list(label_path)
+    label_list = get_label_list_culane(label_path)
     accuracy_list = []
-    # fp_list = []
-    # fn_list = []
     accuracy_sum = 0
-    # fp_sum = 0
-    # fn_sum = 0
     a_list = []
     b_list = []
 
     for index, label_path in tqdm.tqdm(enumerate(label_list), total=len(label_list)):
-        pred_name = label_path.split('/')[-1]
+        # pred_name = label_path.split('/')[-1]
+        #fro caltech
+        pred_name = label_path.split('/')[-2] + '/' + label_path.split('/')[-1]
+        print(pred_name)
+        print(label_path)
         pred = cv2.imread(ops.join(pred_path, pred_name), cv2.IMREAD_COLOR)
         label = cv2.imread(label_path, cv2.IMREAD_COLOR)
+        print(type(pred))
+        if pred is None:
+            accuracy_list.append(0.0)
+            continue
 
         pred = pred.astype((np.float32))
         label = label.astype((np.float32))
 
+        print(pred.shape)
+        print(label.shape)
+
         accuracy = evaluate_model_utils.calculate_model_precision_for_test(pred, label)
-        fn = evaluate_model_utils.calculate_model_fn(pred, label)
-        fp = evaluate_model_utils.calculate_model_fp(pred, label)
 
         sess_config = tf.ConfigProto()
         sess_config.gpu_options.per_process_gpu_memory_fraction = 0.5
@@ -102,21 +117,21 @@ def calculate_accuracy(pred_path, label_path):
         accuracy_list.append(accuracy_result)
         a_list.append(a)
         b_list.append(b)
-        # fp_list.append(fp_result)
-        # fn_list.append(fn_result)
+
+        if b==0:
+            accuracy_sum += 1
+            continue
+
+        if math.isnan(accuracy_result):
+            accuracy_list.append('nan')
+            continue
 
         accuracy_sum = accuracy_sum + accuracy_result
-        # fp_sum = fp_sum + fp_result
-        # fn_sum = fn_sum + fn_result
 
     print("accuracy ", accuracy_sum / len(label_list))
-    # print("fp ", fp_sum/len(label_list))
-    # print("fn ", fn_sum/len(label_list))
     print(accuracy_list)
     print(a_list)
     print(b_list)
-    # print(fp_list)
-    # print(fn_list)
 
 
 def calculate_accuracy_jiqing(pred_path, label_path):
@@ -182,12 +197,15 @@ def calculate_accuracy_jiqing(pred_path, label_path):
 
 
 if __name__ == '__main__':
-    # generate_label_image('/media/stevemaary/新加卷/data/caltech/caltech-lanes/cordova1',
-    #                      '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label/cordova1',
-    #                      '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/cordova1')
-    # label_list = get_label_list('/media/stevemaary/新加卷/data/caltech/caltech-lanes/label/cordova1')
-    # calculate_accuracy('/media/stevemaary/新加卷/data/caltech/caltech-lanes/pred/cordova1/',
-    #                    '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/cordova1/label/')
+    # generate_label_image('/media/stevemaary/新加卷/data/caltech/caltech-lanes/washington1',
+    #                      '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label/washington1',
+    #                      '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/washington1')
+    # label_list = get_label_list('/media/stevemaary/新加卷/data/caltech/caltech-lanes/label/washington1')
+    # calculate_accuracy('/media/stevemaary/新加卷/data/caltech/caltech-lanes/pred/full/washington1/',
+    #                    '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/washington1/label/')
 
-    calculate_accuracy_jiqing('/media/stevemaary/新加卷/data/pred/IMG_0259/',
-                       '/media/stevemaary/新加卷/data/Jiqing Expressway Video/label/0259/')
+    calculate_accuracy('/media/stevemaary/新加卷/data/culane/test8_night/full/',
+                       '/media/stevemaary/新加卷/data/culane/test8_night/label/')
+
+    # calculate_accuracy_jiqing('/media/stevemaary/新加卷/data/pred/IMG_0259/',
+    #                    '/media/stevemaary/新加卷/data/Jiqing Expressway Video/label/0259/')

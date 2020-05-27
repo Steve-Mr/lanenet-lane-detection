@@ -1,3 +1,5 @@
+import time
+
 import tensorflow as tf
 import argparse
 import glob
@@ -48,9 +50,20 @@ def generate_prediction_result(src_dir, dst_dir, weights_path):
     with sess.as_default():
         saver.restore(sess=sess, save_path=weights_path)
 
+        avg_inference_time_cost = []
+        avg_full_time_cost = []
+
         with open(task_file_path, 'r') as file:
+
+            count = -1
+            for count, line in enumerate(file):
+                pass
+            count += 1
+
+        with open(task_file_path, 'r') as file:
+
             for line_index, line in tqdm.tqdm(enumerate(file),
-                                              total= len(open(task_file_path, 'r').readline())):
+                                              total= count):
                 test_task = json.loads(line)
 
                 image_dir = ops.split(test_task['raw_file'])[0]
@@ -69,10 +82,14 @@ def generate_prediction_result(src_dir, dst_dir, weights_path):
                 image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
                 image = image / 127.5 - 1.0  # 归一化 (只归一未改变维数)
 
+                t_start = time.time()
+
                 binary_seg_image, instance_seg_image = sess.run(
                     [binary_seg_ret, instance_seg_ret],
                     feed_dict={input_tensor: [image]}
                 )
+
+                avg_inference_time_cost.append(time.time() - t_start)
 
                 postprocess_result = postprocessor.postprocess_for_non_tusimple(
                     binary_seg_result=binary_seg_image[0],
@@ -80,9 +97,21 @@ def generate_prediction_result(src_dir, dst_dir, weights_path):
                     source_image=image_vis
                 )
 
+                avg_full_time_cost.append(time.time() - t_start)
+
+                if line_index % 100 == 0:
+                    with open(ops.join(dst_dir, 'log'), 'a') as log_file:
+                        print('Mean inference time every single image: {:.5f}s, Mean postprocess time every single image: {:.5f}s, Mean full time every single image: {:.5f}s,'
+                              .format(np.mean(avg_inference_time_cost),
+                                      np.mean(avg_full_time_cost)-np.mean(avg_inference_time_cost),
+                                      np.mean(avg_full_time_cost)),
+                              file=log_file)
+                    avg_inference_time_cost.clear()
+                    avg_full_time_cost.clear()
+
                 dst_image_path = ops.join(target_image_path, image_name_new)
 
-                cv2.imwrite(dst_image_path, image_vis)
+                # cv2.imwrite(dst_image_path, image_vis)
 
                 with open(ops.join(dst_dir, "result.json"), 'a') as result_file:
                     data = {
@@ -93,6 +122,7 @@ def generate_prediction_result(src_dir, dst_dir, weights_path):
                     }
                     json.dump(data, result_file)
                     result_file.write('\n')
+        postprocessor.compute_mean_time()
     return
 
 
