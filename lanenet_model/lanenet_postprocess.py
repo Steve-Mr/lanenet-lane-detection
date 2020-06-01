@@ -352,7 +352,7 @@ class _LaneNetCluster(object):
             pix_coord_idx = tuple((coord[idx][:, 1], coord[idx][:, 0]))  # tuple 即元组 不可修改
             # 获得所有属于该 label 的点坐标
             # coord[idx]第1列全部，coord[idx]第0列全部
-            mask[pix_coord_idx] = self._color_map[0]    # [index]
+            mask[pix_coord_idx] = self._color_map[index]    # [index]
             # 给线条上色
             lane_coords.append(coord[idx])
         # t_end = time.time() - t_start
@@ -883,7 +883,7 @@ class LaneNetPostProcessor(object):
               "fit: ", np.mean(self.fit),
               "full: ", np.mean(self.full))
 
-class LaneNetPostProcessor_for_nontusimple(object):
+class LaneNetPostProcessor_noremap(object):
     """
     lanenet post process for lane generation
     """
@@ -911,9 +911,9 @@ class LaneNetPostProcessor_for_nontusimple(object):
         self.fit = []
         self.full = []
 
-    def postprocess_for_non_tusimple(self, binary_seg_result, instance_seg_result=None,
-                                     min_area_threshold=100, source_image=None,
-                                     data_source='tusimple'):
+    def postprocess_noremap(self, binary_seg_result, instance_seg_result=None,
+                            min_area_threshold=100, source_image=None,
+                            data_source='tusimple'):
 
         """
 
@@ -1014,7 +1014,7 @@ class LaneNetPostProcessor_for_nontusimple(object):
             elif data_source == 'caltech':
                 tmp_mask = np.zeros(shape=(480, 640), dtype=np.uint8)
                 # tmp_mask[tuple((np.int_(coords[:, 1] * 480 / 256), np.int_(coords[:, 0] * 640 / 512)))] = 255
-                tmp_mask[tuple((np.int_(coords[:, 1] * 420 / 256 +10), np.int_(coords[:, 0] * 560 / 512 + 40)))] = 255
+                tmp_mask[tuple((np.int_(coords[:, 1] * 315 / 256 +30), np.int_(coords[:, 0] * 560 / 512 + 40)))] = 255
             elif data_source == 'vpgnet':
                 tmp_mask = np.zeros(shape=(480, 640), dtype=np.uint8)
                 tmp_mask[tuple((np.int_(coords[:, 1] * 480 / 256), np.int_(coords[:, 0] * 640 / 512)))] = 255
@@ -1036,10 +1036,10 @@ class LaneNetPostProcessor_for_nontusimple(object):
             fit_params.append(fit_param)
 
             [ipm_image_height, ipm_image_width] = tmp_mask.shape
-            # plot_y = np.linspace(10, 420, 410)# tmp_mask.nonzero()[0][-1], tmp_mask.nonzero()[0][-1] - 10)
+            plot_y = np.linspace(10, 420, 410)# tmp_mask.nonzero()[0][-1], tmp_mask.nonzero()[0][-1] - 10)
             # plot_y = np.linspace(10, ipm_image_height, ipm_image_height - 10)
             # plot_y = np.linspace(10, tmp_mask.nonzero()[0][-1], tmp_mask.nonzero()[0][-1] - 10)
-            plot_y = np.linspace(10, 590, 580)
+            # plot_y = np.linspace(10, 590, 580) # culane
 
             # linspace(start, stop, num) 生成从 start 到 stop num 个数的等差数列
             fit_x = fit_param[0] * plot_y ** 3 + fit_param[1] * plot_y ** 2 + fit_param[2] * plot_y + fit_param[3]

@@ -231,7 +231,7 @@ def generate_prediction_result(src_dir, dst_dir, weights_path):
     """
     generate prediction results for evaluate
     """
-    postprocessor = lanenet_postprocess.LaneNetPostProcessor_for_nontusimple()
+    postprocessor = lanenet_postprocess.LaneNetPostProcessor_noremap()
 
     with tf.device('/gpu:0'):
         with tf.Graph().as_default():
@@ -286,7 +286,7 @@ def generate_prediction_result(src_dir, dst_dir, weights_path):
 
                         avg_time_cost.append(time.time() - t_start)
 
-                        postprocess_result = postprocessor.postprocess_for_non_tusimple(
+                        postprocess_result = postprocessor.postprocess_noremap(
                             binary_seg_result=out[0][0],
                             instance_seg_result=out[1][0],
                             source_image=image_vis

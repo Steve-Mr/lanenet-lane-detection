@@ -109,7 +109,7 @@ def test_lanenet(image_path, weights_path):
     binary_seg_ret, instance_seg_ret = net.inference(input_tensor=input_tensor, name='lanenet_model')
 
     # postprocessor = lanenet_postprocess.LaneNetPostProcessor()
-    postprocessor = lanenet_postprocess.LaneNetPostProcessor_for_nontusimple()
+    postprocessor = lanenet_postprocess.LaneNetPostProcessor_noremap()
 
     saver = tf.train.Saver()
     # 加载预训练模型参数
@@ -152,7 +152,7 @@ def test_lanenet(image_path, weights_path):
             source_image=image_vis
         )"""
 
-        postprocess_result = postprocessor.postprocess_for_non_tusimple(
+        postprocess_result = postprocessor.postprocess_noremap(
             binary_seg_result=binary_seg_image[0],
             instance_seg_result=instance_seg_image[0],
             source_image=image_vis
@@ -366,18 +366,27 @@ def test_lanenet_nontusimple(image_path, weights_path):
     image_vis = image
     # image_vis = cv2.imread('/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/cordova1/label/f00028.png', cv2.IMREAD_COLOR)
 
-    # image = image[10:430, 40:600]
-    image = image[:430]
+    image = image[30:345, 40:600] # caltech
+    # image = image[:430]           # culane
 
     image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
 
+    plt.figure("before")
+    plt.imshow(image[:, :, (2, 1, 0)])
+
     image = image / 127.5 - 1.0  # 归一化 (只归一未改变维数)
+
+    plt.figure("after")
+    plt.imshow(image[:, :, (2, 1, 0)])
+
     log.info('Image load complete, cost time: {:.5f}s'.format(time.time() - t_start))
 
     input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
     net = lanenet.LaneNet(phase='test', net_flag='vgg')
-    binary_seg_ret, instance_seg_ret = net.inference(input_tensor=input_tensor, name='lanenet_model')
-    postprocessor = lanenet_postprocess.LaneNetPostProcessor_for_nontusimple()
+    # binary_seg_ret, instance_seg_ret, enbinary_, eninstance_, binary_, instance_ = net.inference(input_tensor=input_tensor, name='lanenet_model')
+    binary_seg_ret, instance_seg_ret = net.inference(
+        input_tensor=input_tensor, name='lanenet_model')
+    postprocessor = lanenet_postprocess.LaneNetPostProcessor_noremap()
 
     saver = tf.train.Saver()
     sess_config = tf.ConfigProto()
@@ -390,19 +399,40 @@ def test_lanenet_nontusimple(image_path, weights_path):
         saver.restore(sess=sess, save_path=weights_path)
 
         t_start = time.time()
+        """
+        binary_seg_image, instance_seg_image, encode_binary, encode_instance, decode_binary, decode_instance = sess.run(
+            [binary_seg_ret, instance_seg_ret, enbinary_, eninstance_, binary_, instance_],
+            feed_dict={input_tensor: [image]}
+        )
+        """
 
         binary_seg_image, instance_seg_image = sess.run(
             [binary_seg_ret, instance_seg_ret],
             feed_dict={input_tensor: [image]}
         )
+
         t_cost = time.time() - t_start
         log.info('Single imgae inference cost time: {:.5f}s'.format(t_cost))
+        """
+        binary = sess.run(tf.transpose(decode_binary, [3, 0, 1, 2]))
+        instance = sess.run(tf.transpose(decode_instance, [3, 0, 1, 2]))
+        enbinary = sess.run(tf.transpose(encode_binary,[3, 0, 1, 2]))
+        eninstance = sess.run(tf.transpose(encode_instance, [3, 0, 1, 2]))
 
-        postprocess_result = postprocessor.postprocess_for_non_tusimple(
+        plt.figure('decode_binary')
+        plt.imshow(binary[0][0])
+        plt.figure('decode_instance')
+        plt.imshow(instance[0][0])
+        plt.figure('encode_binary')
+        plt.imshow(enbinary[0][0])
+        plt.figure('encode_instance')
+        plt.imshow(eninstance[0][0])
+        """
+        postprocess_result = postprocessor.postprocess_noremap(
             binary_seg_result=binary_seg_image[0],
             instance_seg_result=instance_seg_image[0],
             source_image=image_vis,
-            data_source='culane'
+            data_source='caltech'
         )
 
         mask_image = postprocess_result['mask_image']

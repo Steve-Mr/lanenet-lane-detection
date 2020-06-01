@@ -490,6 +490,20 @@ if __name__ == '__main__':
     enbinary = model._net_intermediate_results['encode_stage_5_binary']['data']
     eninstance = model._net_intermediate_results['encode_stage_5_instance']['data']
 
+    with tf.variable_scope(name_or_scope='vgg_backend', reuse=True):
+        with tf.variable_scope(name_or_scope='binary_seg'):
+            binary_seg_score = tf.nn.softmax(logits=enbinary)
+            """
+            归一化
+            将一个含任意实数的K维向量“压缩”到另一个K维实向量中，使得每一个元素的范围都在之间，并且所有元素的和为1
+            Returns:
+            A `Tensor`. Has the same type and shape as `logits`.
+            """
+
+            binary_seg_prediction = tf.argmax(binary_seg_score, axis=-1)
+            # 返回最大值索引号 axis：选取的坐标值
+
+
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
 

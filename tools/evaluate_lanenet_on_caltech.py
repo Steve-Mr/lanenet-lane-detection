@@ -73,16 +73,18 @@ def generate_label_image(src_path, label_path, dst_path):
 
 
 def calculate_accuracy(pred_path, label_path):
-    label_list = get_label_list_culane(label_path)
+    # label_list = get_label_list_culane(label_path)
+    label_list = get_label_list(label_path)
     accuracy_list = []
     accuracy_sum = 0
     a_list = []
     b_list = []
 
     for index, label_path in tqdm.tqdm(enumerate(label_list), total=len(label_list)):
-        # pred_name = label_path.split('/')[-1]
-        #fro caltech
-        pred_name = label_path.split('/')[-2] + '/' + label_path.split('/')[-1]
+        pred_name = label_path.split('/')[-1]
+        #for caltech
+        # pred_name = label_path.split('/')[-2] + '/' + label_path.split('/')[-1]
+        #for culane
         print(pred_name)
         print(label_path)
         pred = cv2.imread(ops.join(pred_path, pred_name), cv2.IMREAD_COLOR)
@@ -201,11 +203,11 @@ if __name__ == '__main__':
     #                      '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label/washington1',
     #                      '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/washington1')
     # label_list = get_label_list('/media/stevemaary/新加卷/data/caltech/caltech-lanes/label/washington1')
-    # calculate_accuracy('/media/stevemaary/新加卷/data/caltech/caltech-lanes/pred/full/washington1/',
-    #                    '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/washington1/label/')
+    calculate_accuracy('/media/stevemaary/新加卷/data/caltech/caltech-lanes/pred/full/cordova1/',
+                       '/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/cordova1/label/')
 
-    calculate_accuracy('/media/stevemaary/新加卷/data/culane/test8_night/full/',
-                       '/media/stevemaary/新加卷/data/culane/test8_night/label/')
+    # calculate_accuracy('/media/stevemaary/新加卷/data/culane/test8_night/full/',
+    #                    '/media/stevemaary/新加卷/data/culane/test8_night/label/')
 
     # calculate_accuracy_jiqing('/media/stevemaary/新加卷/data/pred/IMG_0259/',
     #                    '/media/stevemaary/新加卷/data/Jiqing Expressway Video/label/0259/')
