@@ -131,6 +131,7 @@ def compute_mean_time(src_path):
               "mean_full: ", full/index)
 
 
+
 if __name__ == '__main__':
     # pred_sample("/home/stevemaary/projects/lanenet-lane-detection/data/tusimple_test_image/00091.png",
     #             "/home/stevemaary/projects/lanenet-lane-detection/data/tusimple_test_image/00092.png",

@@ -245,19 +245,19 @@ def generate_on_caltech(src_path, pred_path, weights_path):
 
         for index, image_path in tqdm.tqdm(enumerate(image_list), total=len(image_list)):
             image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-            image_vis = np.zeros(shape=(480, 640, 3), dtype=np.uint8)
-            image = image[30:345, 40:600]
+            image_vis = image # np.zeros(shape=(480, 640, 3), dtype=np.uint8)
+            image = image[10:430, 40:600]
             image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
             image = image / 127.5 - 1.0  # 归一化 (只归一未改变维数)
 
-            t_start = time.time()
+            # t_start = time.time()
 
             binary_seg_image, instance_seg_image = sess.run(
                 [binary_seg_ret, instance_seg_ret],
                 feed_dict={input_tensor: [image]}
             )
 
-            avg_inference_time_cost.append(time.time() - t_start)
+            # avg_inference_time_cost.append(time.time() - t_start)
 
             postprocess_result = postprocessor.postprocess_noremap(
                 binary_seg_result=binary_seg_image[0],
@@ -266,18 +266,20 @@ def generate_on_caltech(src_path, pred_path, weights_path):
                 data_source='caltech'
             )
 
-            avg_full_time_cost.append(time.time() - t_start)
+            # avg_full_time_cost.append(time.time() - t_start)
 
             dst_image_path = ops.join(pred_path, image_path.split('/')[-2])
             if not ops.exists(dst_image_path):
                 os.makedirs(dst_image_path)
             dst_image_path = ops.join(dst_image_path, image_path.split('/')[-1])
-
+            """
             dst_full_image_path = ops.join(pred_path, 'full' ,image_path.split('/')[-2])
             if not ops.exists(dst_full_image_path):
                 os.makedirs(dst_full_image_path)
             dst_full_image_path = ops.join(dst_full_image_path, image_path.split('/')[-1])
+            """
 
+            """
             binary = lanenet_postprocess._morphological_process(binary_seg_image[0])
 
             mask = cv2.resize(binary, (560, 315), interpolation=cv2.INTER_LINEAR)
@@ -290,8 +292,9 @@ def generate_on_caltech(src_path, pred_path, weights_path):
 
 
             cv2.imwrite(dst_image_path, back*255)    # postprocess_result['mask_image'])
-            cv2.imwrite(dst_full_image_path, postprocess_result['source_image'])
-
+            """
+            cv2.imwrite(dst_image_path, postprocess_result['source_image'])
+        """
         with open(ops.join(pred_path, 'log.txt'), 'a') as log_file:
             print(
                 'Mean inference time every single image: {:.5f}s, Mean postprocess time every single image: {:.5f}s, Mean full time every single image: {:.5f}s,'
@@ -301,7 +304,7 @@ def generate_on_caltech(src_path, pred_path, weights_path):
                 file=log_file)
         avg_inference_time_cost.clear()
         avg_full_time_cost.clear()
-
+        """
 
     return
 
@@ -527,9 +530,56 @@ def generate_on_jiqing(src_path, pred_path, weights_path):
     return
 
 
+def generate_tusimple_sample(scr_path, pred_path, weights_path):
+    listOfFiles = list()
+    for (dirpath, dirnames, filenames) in os.walk(scr_path):
+        listOfFiles += [os.path.join(dirpath, file) for file in filenames]
+    print(listOfFiles)
+
+    input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
+    net = lanenet.LaneNet(phase='test', net_flag='vgg')
+    binary_seg_ret, instance_seg_ret = net.inference(input_tensor=input_tensor, name='lanenet_model')
+    postprocessor = lanenet_postprocess.LaneNetPostProcessor_noremap()
+
+    saver = tf.train.Saver()
+    sess_config = tf.ConfigProto()
+    sess_config.gpu_options.per_process_gpu_memory_fraction = CFG.TEST.GPU_MEMORY_FRACTION
+    sess_config.gpu_options.allow_growth = CFG.TRAIN.TF_ALLOW_GROWTH
+    sess_config.gpu_options.allocator_type = 'BFC'  # best fit with coalescing  内存管理算法
+    sess = tf.Session(config=sess_config)
+
+    with sess.as_default():
+        saver.restore(sess=sess, save_path=weights_path)
+        for index, image_path in tqdm.tqdm(enumerate(listOfFiles), total=len(listOfFiles)):
+            image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+            image_vis = image
+            image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
+            image = image / 127.5 - 1.0  # 归一化 (只归一未改变维数)
+
+            binary_seg_image, instance_seg_image = sess.run(
+                [binary_seg_ret, instance_seg_ret],
+                feed_dict={input_tensor: [image]}
+            )
+
+            postprocess_result = postprocessor.postprocess_noremap(
+                binary_seg_result=binary_seg_image[0],
+                instance_seg_result=instance_seg_image[0],
+                source_image=image_vis,
+            )
+
+            dst_image_path = ops.join(pred_path, image_path.split('/')[-2])
+            if not ops.exists(dst_image_path):
+                os.makedirs(dst_image_path)
+            dst_image_path = ops.join(dst_image_path, image_path.split('/')[-1])
+
+            cv2.imwrite(dst_image_path, image_vis)
+
+    return
+
+
 if __name__ == '__main__':
 
-    generate_prediction_result('/media/stevemaary/68A0799BA0797104/Users/a1975/Documents/lanenet_related_files/', '/home/stevemaary/data/pred', './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
+    # generate_prediction_result('/media/stevemaary/68A0799BA0797104/Users/a1975/Documents/lanenet_related_files/', '/home/stevemaary/data/pred', './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
 
     """
         process_video('/media/stevemaary/新加卷/data/Jiqing Expressway Video/',
@@ -542,11 +592,11 @@ if __name__ == '__main__':
              '/media/stevemaary/新加卷/data/pred/',
              './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
     """
-
+    """
     generate_on_caltech('/media/stevemaary/新加卷/data/caltech/caltech-lanes/cordova1',
                         '/media/stevemaary/新加卷/data/caltech/caltech-lanes/pred',
                         './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
-
+    """
     """
     generate_on_culane('/media/stevemaary/68A0799BA0797104/Users/a1975/Documents/lanenet_related_files/culane',
                        'test8_night.txt',
@@ -563,4 +613,14 @@ if __name__ == '__main__':
     generate_on_jiqing('/media/stevemaary/新加卷/data/src/IMG_0259',
                        '/media/stevemaary/新加卷/data/pred/',
                        './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
+    """
+
+    generate_tusimple_sample('/media/stevemaary/68A0799BA0797104/Users/a1975/Documents/lanenet_related_files/clips/0530/1492629957554176874_0',
+                             '/media/stevemaary/新加卷/data/pred/sample/',
+                             './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
+
+    """
+    generate_on_caltech('/media/stevemaary/新加卷/data/caltech/caltech-lanes/cordova1',
+                        '/media/stevemaary/新加卷/data/pred/sample',
+                        './model/tusimple_lanenet/tusimple_lanenet_vgg.ckpt')
     """

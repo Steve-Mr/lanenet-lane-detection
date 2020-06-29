@@ -188,7 +188,7 @@ class _LaneNetCluster(object):
                            np.array([100, 50, 100])]
 
     @staticmethod
-    def _embedding_feats_dbscan_cluster(embedding_image_feats, eps=0.35, min_samples=100):# 0.50 700 (2)200
+    def _embedding_feats_dbscan_cluster(embedding_image_feats, eps=0.50, min_samples=700):# 0.50 700 (2)200
 
         """
         dbscan cluster
@@ -283,7 +283,7 @@ class _LaneNetCluster(object):
 
         return ret
 
-    def apply_lane_feats_cluster(self, binary_seg_result, instance_seg_result):
+    def apply_lane_feats_cluster(self, binary_seg_result, instance_seg_result, data_source='tusimple'):
 
         """
         :param binary_seg_result:
@@ -307,9 +307,16 @@ class _LaneNetCluster(object):
         """
 
         # dbscan cluster
-        dbscan_cluster_result = self._embedding_feats_dbscan_cluster(
-            embedding_image_feats=get_lane_embedding_feats_result['lane_embedding_feats']
-        )
+        if data_source == 'caltech':
+            dbscan_cluster_result = self._embedding_feats_dbscan_cluster(
+                embedding_image_feats=get_lane_embedding_feats_result['lane_embedding_feats'],
+                eps=0.35,
+                min_samples=200
+            )
+        else:
+            dbscan_cluster_result = self._embedding_feats_dbscan_cluster(
+                embedding_image_feats=get_lane_embedding_feats_result['lane_embedding_feats']
+            )
         if dbscan_cluster_result['cluster_nums'] < 2:
             dbscan_cluster_result = self._embedding_feats_dbscan_cluster(
                 embedding_image_feats=get_lane_embedding_feats_result['lane_embedding_feats'],
@@ -981,7 +988,8 @@ class LaneNetPostProcessor_noremap(object):
         # apply embedding features cluster
         mask_image, lane_coords = self._cluster.apply_lane_feats_cluster(
             binary_seg_result=morphological_ret,
-            instance_seg_result=instance_seg_result
+            instance_seg_result=instance_seg_result,
+            data_source = data_source
         )
 
         # t_clu = time.time() - t_start
@@ -1014,7 +1022,7 @@ class LaneNetPostProcessor_noremap(object):
             elif data_source == 'caltech':
                 tmp_mask = np.zeros(shape=(480, 640), dtype=np.uint8)
                 # tmp_mask[tuple((np.int_(coords[:, 1] * 480 / 256), np.int_(coords[:, 0] * 640 / 512)))] = 255
-                tmp_mask[tuple((np.int_(coords[:, 1] * 315 / 256 +30), np.int_(coords[:, 0] * 560 / 512 + 40)))] = 255
+                tmp_mask[tuple((np.int_(coords[:, 1] * 420 / 256 + 10), np.int_(coords[:, 0] * 560 / 512 + 40)))] = 255
             elif data_source == 'vpgnet':
                 tmp_mask = np.zeros(shape=(480, 640), dtype=np.uint8)
                 tmp_mask[tuple((np.int_(coords[:, 1] * 480 / 256), np.int_(coords[:, 0] * 640 / 512)))] = 255
@@ -1036,9 +1044,9 @@ class LaneNetPostProcessor_noremap(object):
             fit_params.append(fit_param)
 
             [ipm_image_height, ipm_image_width] = tmp_mask.shape
-            plot_y = np.linspace(10, 420, 410)# tmp_mask.nonzero()[0][-1], tmp_mask.nonzero()[0][-1] - 10)
+            # plot_y = np.linspace(10, 420, 410)# tmp_mask.nonzero()[0][-1], tmp_mask.nonzero()[0][-1] - 10)
             # plot_y = np.linspace(10, ipm_image_height, ipm_image_height - 10)
-            # plot_y = np.linspace(10, tmp_mask.nonzero()[0][-1], tmp_mask.nonzero()[0][-1] - 10)
+            plot_y = np.linspace(10, tmp_mask.nonzero()[0][-1], tmp_mask.nonzero()[0][-1] - 10)
             # plot_y = np.linspace(10, 590, 580) # culane
 
             # linspace(start, stop, num) 生成从 start 到 stop num 个数的等差数列
@@ -1149,7 +1157,7 @@ class LaneNetPostProcessor_noremap(object):
 
             lane_color = self._color_map[index].tolist()
 
-            cv2.polylines(source_image, pred_lane_pts, isClosed=False, color=(255,255,255), thickness=5)
+            cv2.polylines(source_image, pred_lane_pts, isClosed=False, color=lane_color, thickness=5)
             cv2.polylines(background_img, pred_lane_pts, isClosed=False, color=255, thickness=5) # thickness=2
 
             if data_source == 'tusimple':

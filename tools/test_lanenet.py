@@ -366,18 +366,19 @@ def test_lanenet_nontusimple(image_path, weights_path):
     image_vis = image
     # image_vis = cv2.imread('/media/stevemaary/新加卷/data/caltech/caltech-lanes/label_file/cordova1/label/f00028.png', cv2.IMREAD_COLOR)
 
-    image = image[30:345, 40:600] # caltech
+    # image = image[30:345, 40:600] # caltech
     # image = image[:430]           # culane
 
     image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
 
-    plt.figure("before")
-    plt.imshow(image[:, :, (2, 1, 0)])
+    # plt.figure("before")
+    # plt.imshow(image[:, :, (2, 1, 0)])
 
     image = image / 127.5 - 1.0  # 归一化 (只归一未改变维数)
 
-    plt.figure("after")
-    plt.imshow(image[:, :, (2, 1, 0)])
+    # plt.figure("after")
+    # plt.imshow(image[:, :, (2, 1, 0)])
+    # cv2.imwrite('after.png', image[:,:,(2,1,0)])
 
     log.info('Image load complete, cost time: {:.5f}s'.format(time.time() - t_start))
 
@@ -432,7 +433,7 @@ def test_lanenet_nontusimple(image_path, weights_path):
             binary_seg_result=binary_seg_image[0],
             instance_seg_result=instance_seg_image[0],
             source_image=image_vis,
-            data_source='caltech'
+            # data_source='caltech'
         )
 
         mask_image = postprocess_result['mask_image']
@@ -467,13 +468,14 @@ def test_lanenet_nontusimple(image_path, weights_path):
         # print(embedding_image[:, :, 0])
         plt.figure('binary_image')
         plt.imshow(binary_seg_image[0] * 255, cmap='gray')
-        plt.figure("cropped")
-        plt.imshow(image)
+        # plt.figure("cropped")
+        # plt.imshow(image)
         plt.show()
 
         cv2.imwrite('instance_mask_image.png', mask_image)
         cv2.imwrite('source_image.png', postprocess_result['source_image'])
         cv2.imwrite('binary_mask_image.png', binary_seg_image[0] * 255)
+        cv2.imwrite('instance.png', embedding_image[:, :, (2, 1, 0)])
 
     sess.close()
 
